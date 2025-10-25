@@ -14,6 +14,13 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
+/**
+ * @OA\Tag(
+ *     name="File Sharing",
+ *     description="Gestion du partage de fichiers"
+ * )
+ */
+
 class FileShareController extends Controller
 {
     public function __construct(
@@ -24,7 +31,32 @@ class FileShareController extends Controller
     }
 
     /**
-     * Récupère tous les partages d'un fichier.
+     * @OA\Get(
+     *     path="/api/files/{file}/shares",
+     *     summary="Partages d'un fichier",
+     *     description="Récupère tous les liens de partage d'un fichier",
+     *     operationId="getFileShares",
+     *     tags={"File Sharing"},
+     *     security={{"sanctum": {}}},
+     *     @OA\Parameter(
+     *         name="file",
+     *         in="path",
+     *         description="ID du fichier",
+     *         required=true,
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Partages récupérés avec succès",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="data", type="array", @OA\Items(ref="#/components/schemas/FileShare"))
+     *         )
+     *     ),
+     *     @OA\Response(response=401, description="Non authentifié"),
+     *     @OA\Response(response=403, description="Accès refusé"),
+     *     @OA\Response(response=404, description="Fichier non trouvé")
+     * )
      */
     public function index(File $file): JsonResponse
     {
@@ -39,7 +71,45 @@ class FileShareController extends Controller
     }
 
     /**
-     * Crée un nouveau partage.
+     * @OA\Post(
+     *     path="/api/files/{file}/shares",
+     *     summary="Créer un partage",
+     *     description="Crée un nouveau lien de partage pour un fichier",
+     *     operationId="createFileShare",
+     *     tags={"File Sharing"},
+     *     security={{"sanctum": {}}},
+     *     @OA\Parameter(
+     *         name="file",
+     *         in="path",
+     *         description="ID du fichier",
+     *         required=true,
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\RequestBody(
+     *         required=false,
+     *         @OA\JsonContent(
+     *             @OA\Property(property="password", type="string", description="Mot de passe pour accéder au partage"),
+     *             @OA\Property(property="allow_download", type="boolean", default=true, description="Autoriser le téléchargement"),
+     *             @OA\Property(property="allow_preview", type="boolean", default=true, description="Autoriser l'aperçu"),
+     *             @OA\Property(property="max_downloads", type="integer", description="Nombre maximum de téléchargements"),
+     *             @OA\Property(property="expires_at", type="string", format="date-time", description="Date d'expiration")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=201,
+     *         description="Partage créé avec succès",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Lien de partage créé avec succès."),
+     *             @OA\Property(property="data", ref="#/components/schemas/FileShare")
+     *         )
+     *     ),
+     *     @OA\Response(response=401, description="Non authentifié"),
+     *     @OA\Response(response=403, description="Accès refusé"),
+     *     @OA\Response(response=404, description="Fichier non trouvé"),
+     *     @OA\Response(response=422, description="Données invalides"),
+     *     @OA\Response(response=500, description="Erreur serveur")
+     * )
      */
     public function store(CreateShareRequest $request, File $file): JsonResponse
     {
@@ -73,7 +143,39 @@ class FileShareController extends Controller
     }
 
     /**
-     * Affiche les détails d'un partage.
+     * @OA\Get(
+     *     path="/api/files/{file}/shares/{share}",
+     *     summary="Détails d'un partage",
+     *     description="Affiche les détails d'un lien de partage spécifique",
+     *     operationId="getFileShare",
+     *     tags={"File Sharing"},
+     *     security={{"sanctum": {}}},
+     *     @OA\Parameter(
+     *         name="file",
+     *         in="path",
+     *         description="ID du fichier",
+     *         required=true,
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\Parameter(
+     *         name="share",
+     *         in="path",
+     *         description="ID du partage",
+     *         required=true,
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Détails du partage récupérés avec succès",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="data", ref="#/components/schemas/FileShare")
+     *         )
+     *     ),
+     *     @OA\Response(response=401, description="Non authentifié"),
+     *     @OA\Response(response=403, description="Accès refusé"),
+     *     @OA\Response(response=404, description="Fichier ou partage non trouvé")
+     * )
      */
     public function show(File $file, FileShare $share): JsonResponse
     {
@@ -93,7 +195,40 @@ class FileShareController extends Controller
     }
 
     /**
-     * Désactive un partage.
+     * @OA\Post(
+     *     path="/api/files/{file}/shares/{share}/deactivate",
+     *     summary="Désactiver un partage",
+     *     description="Désactive un lien de partage existant",
+     *     operationId="deactivateFileShare",
+     *     tags={"File Sharing"},
+     *     security={{"sanctum": {}}},
+     *     @OA\Parameter(
+     *         name="file",
+     *         in="path",
+     *         description="ID du fichier",
+     *         required=true,
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\Parameter(
+     *         name="share",
+     *         in="path",
+     *         description="ID du partage",
+     *         required=true,
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Partage désactivé avec succès",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Partage désactivé avec succès.")
+     *         )
+     *     ),
+     *     @OA\Response(response=401, description="Non authentifié"),
+     *     @OA\Response(response=403, description="Accès refusé"),
+     *     @OA\Response(response=404, description="Fichier ou partage non trouvé"),
+     *     @OA\Response(response=500, description="Erreur serveur")
+     * )
      */
     public function deactivate(File $file, FileShare $share): JsonResponse
     {
@@ -124,7 +259,40 @@ class FileShareController extends Controller
     }
 
     /**
-     * Supprime un partage.
+     * @OA\Delete(
+     *     path="/api/files/{file}/shares/{share}",
+     *     summary="Supprimer un partage",
+     *     description="Supprime définitivement un lien de partage",
+     *     operationId="deleteFileShare",
+     *     tags={"File Sharing"},
+     *     security={{"sanctum": {}}},
+     *     @OA\Parameter(
+     *         name="file",
+     *         in="path",
+     *         description="ID du fichier",
+     *         required=true,
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\Parameter(
+     *         name="share",
+     *         in="path",
+     *         description="ID du partage",
+     *         required=true,
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Partage supprimé avec succès",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Partage supprimé avec succès.")
+     *         )
+     *     ),
+     *     @OA\Response(response=401, description="Non authentifié"),
+     *     @OA\Response(response=403, description="Accès refusé"),
+     *     @OA\Response(response=404, description="Fichier ou partage non trouvé"),
+     *     @OA\Response(response=500, description="Erreur serveur")
+     * )
      */
     public function destroy(File $file, FileShare $share): JsonResponse
     {
@@ -154,7 +322,39 @@ class FileShareController extends Controller
     }
 
     /**
-     * Accède à un fichier partagé via son token (public).
+     * @OA\Get(
+     *     path="/api/files/share/{token}",
+     *     summary="Accéder à un fichier partagé",
+     *     description="Accède aux informations d'un fichier partagé via son token (public)",
+     *     operationId="accessSharedFile",
+     *     tags={"File Sharing"},
+     *     @OA\Parameter(
+     *         name="token",
+     *         in="path",
+     *         description="Token de partage",
+     *         required=true,
+     *         @OA\Schema(type="string")
+     *     ),
+     *     @OA\RequestBody(
+     *         required=false,
+     *         @OA\JsonContent(
+     *             @OA\Property(property="password", type="string", description="Mot de passe si requis")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Accès autorisé au fichier partagé",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="data", type="object",
+     *                 @OA\Property(property="file", ref="#/components/schemas/File"),
+     *                 @OA\Property(property="share", ref="#/components/schemas/FileShare")
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(response=403, description="Accès refusé (mot de passe incorrect, expiré, etc.)"),
+     *     @OA\Response(response=404, description="Lien de partage introuvable")
+     * )
      */
     public function access(Request $request, string $token): JsonResponse
     {
@@ -190,7 +390,33 @@ class FileShareController extends Controller
     }
 
     /**
-     * Télécharge un fichier partagé via son token (public).
+     * @OA\Get(
+     *     path="/api/files/share/{token}/download",
+     *     summary="Télécharger un fichier partagé",
+     *     description="Télécharge un fichier partagé via son token (public)",
+     *     operationId="downloadSharedFile",
+     *     tags={"File Sharing"},
+     *     @OA\Parameter(
+     *         name="token",
+     *         in="path",
+     *         description="Token de partage",
+     *         required=true,
+     *         @OA\Schema(type="string")
+     *     ),
+     *     @OA\RequestBody(
+     *         required=false,
+     *         @OA\JsonContent(
+     *             @OA\Property(property="password", type="string", description="Mot de passe si requis")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Fichier téléchargé avec succès",
+     *         @OA\MediaType(mediaType="application/octet-stream")
+     *     ),
+     *     @OA\Response(response=403, description="Accès refusé (mot de passe incorrect, expiré, etc.)"),
+     *     @OA\Response(response=404, description="Lien de partage introuvable")
+     * )
      */
     public function download(Request $request, string $token)
     {

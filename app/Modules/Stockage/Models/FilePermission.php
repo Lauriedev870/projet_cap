@@ -6,6 +6,38 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @OA\Schema(
+ *     schema="FilePermission",
+ *     title="File Permission",
+ *     description="Modèle représentant une permission sur un fichier",
+ *     @OA\Property(property="id", type="integer", description="ID unique"),
+ *     @OA\Property(property="file_id", type="integer", description="ID du fichier"),
+ *     @OA\Property(property="user_id", type="integer", nullable=true, description="ID de l'utilisateur (null si permission par rôle)"),
+ *     @OA\Property(property="role_id", type="integer", nullable=true, description="ID du rôle (null si permission individuelle)"),
+ *     @OA\Property(property="permission_type", type="string", enum={"read", "write", "delete", "share", "admin"}, description="Type de permission"),
+ *     @OA\Property(property="granted_by", type="integer", description="ID de l'utilisateur qui a accordé la permission"),
+ *     @OA\Property(property="granted_at", type="string", format="date-time", description="Date d'attribution"),
+ *     @OA\Property(property="expires_at", type="string", format="date-time", nullable=true, description="Date d'expiration"),
+ *     @OA\Property(property="created_at", type="string", format="date-time", description="Date de création"),
+ *     @OA\Property(property="updated_at", type="string", format="date-time", description="Date de mise à jour"),
+ *     @OA\Property(
+ *         property="file",
+ *         ref="#/components/schemas/File",
+ *         description="Fichier associé"
+ *     ),
+ *     @OA\Property(
+ *         property="user",
+ *         ref="#/components/schemas/User",
+ *         description="Utilisateur bénéficiaire"
+ *     ),
+ *     @OA\Property(
+ *         property="role",
+ *         ref="#/components/schemas/Role",
+ *         description="Rôle bénéficiaire"
+ *     )
+ * )
+ */
 class FilePermission extends Model
 {
     use HasFactory;

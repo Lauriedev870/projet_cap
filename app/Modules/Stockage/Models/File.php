@@ -9,6 +9,38 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Storage;
 
+/**
+ * @OA\Schema(
+ *     schema="File",
+ *     title="File",
+ *     description="Modèle représentant un fichier stocké",
+ *     @OA\Property(property="id", type="integer", description="ID unique"),
+ *     @OA\Property(property="user_id", type="integer", description="ID du propriétaire"),
+ *     @OA\Property(property="name", type="string", description="Nom du fichier"),
+ *     @OA\Property(property="original_name", type="string", description="Nom original du fichier"),
+ *     @OA\Property(property="path", type="string", description="Chemin du fichier"),
+ *     @OA\Property(property="disk", type="string", description="Disque de stockage"),
+ *     @OA\Property(property="visibility", type="string", enum={"public", "private"}, description="Visibilité du fichier"),
+ *     @OA\Property(property="module_name", type="string", description="Nom du module"),
+ *     @OA\Property(property="module_resource_type", type="string", description="Type de ressource du module"),
+ *     @OA\Property(property="module_resource_id", type="integer", description="ID de la ressource du module"),
+ *     @OA\Property(property="collection", type="string", description="Collection du fichier"),
+ *     @OA\Property(property="size", type="integer", description="Taille du fichier en octets"),
+ *     @OA\Property(property="mime_type", type="string", description="Type MIME"),
+ *     @OA\Property(property="extension", type="string", description="Extension du fichier"),
+ *     @OA\Property(property="file_hash", type="string", description="Hash du fichier"),
+ *     @OA\Property(property="metadata", type="object", description="Métadonnées supplémentaires"),
+ *     @OA\Property(property="is_locked", type="boolean", description="Si le fichier est verrouillé"),
+ *     @OA\Property(property="locked_at", type="string", format="date-time", description="Date de verrouillage"),
+ *     @OA\Property(property="locked_by", type="integer", description="ID de l'utilisateur qui a verrouillé"),
+ *     @OA\Property(property="download_count", type="integer", description="Nombre de téléchargements"),
+ *     @OA\Property(property="last_accessed_at", type="string", format="date-time", description="Dernier accès"),
+ *     @OA\Property(property="created_at", type="string", format="date-time", description="Date de création"),
+ *     @OA\Property(property="updated_at", type="string", format="date-time", description="Date de mise à jour"),
+ *     @OA\Property(property="url", type="string", description="URL du fichier"),
+ *     @OA\Property(property="size_for_humans", type="string", description="Taille formatée")
+ * )
+ */
 class File extends Model
 {
     use HasFactory, SoftDeletes;

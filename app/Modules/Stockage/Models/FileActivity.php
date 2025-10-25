@@ -6,6 +6,32 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @OA\Schema(
+ *     schema="FileActivity",
+ *     title="File Activity",
+ *     description="Modèle représentant une activité sur un fichier",
+ *     @OA\Property(property="id", type="integer", description="ID unique"),
+ *     @OA\Property(property="file_id", type="integer", description="ID du fichier"),
+ *     @OA\Property(property="user_id", type="integer", nullable=true, description="ID de l'utilisateur"),
+ *     @OA\Property(property="activity_type", type="string", description="Type d'activité"),
+ *     @OA\Property(property="description", type="string", nullable=true, description="Description de l'activité"),
+ *     @OA\Property(property="metadata", type="object", nullable=true, description="Métadonnées supplémentaires"),
+ *     @OA\Property(property="ip_address", type="string", description="Adresse IP"),
+ *     @OA\Property(property="user_agent", type="string", description="User agent"),
+ *     @OA\Property(property="created_at", type="string", format="date-time", description="Date de création"),
+ *     @OA\Property(
+ *         property="file",
+ *         ref="#/components/schemas/File",
+ *         description="Fichier associé"
+ *     ),
+ *     @OA\Property(
+ *         property="user",
+ *         ref="#/components/schemas/User",
+ *         description="Utilisateur associé"
+ *     )
+ * )
+ */
 class FileActivity extends Model
 {
     use HasFactory;

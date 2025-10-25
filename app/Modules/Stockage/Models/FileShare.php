@@ -7,6 +7,37 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
 
+/**
+ * @OA\Schema(
+ *     schema="FileShare",
+ *     title="File Share",
+ *     description="Modèle représentant un partage de fichier",
+ *     @OA\Property(property="id", type="integer", description="ID unique"),
+ *     @OA\Property(property="file_id", type="integer", description="ID du fichier partagé"),
+ *     @OA\Property(property="token", type="string", description="Token unique du partage"),
+ *     @OA\Property(property="password_hash", type="string", nullable=true, description="Hash du mot de passe"),
+ *     @OA\Property(property="allow_download", type="boolean", description="Autorise le téléchargement"),
+ *     @OA\Property(property="allow_preview", type="boolean", description="Autorise l'aperçu"),
+ *     @OA\Property(property="max_downloads", type="integer", nullable=true, description="Nombre maximum de téléchargements"),
+ *     @OA\Property(property="download_count", type="integer", description="Nombre de téléchargements effectués"),
+ *     @OA\Property(property="expires_at", type="string", format="date-time", nullable=true, description="Date d'expiration"),
+ *     @OA\Property(property="created_by", type="integer", description="ID du créateur du partage"),
+ *     @OA\Property(property="is_active", type="boolean", description="Si le partage est actif"),
+ *     @OA\Property(property="created_at", type="string", format="date-time", description="Date de création"),
+ *     @OA\Property(property="updated_at", type="string", format="date-time", description="Date de mise à jour"),
+ *     @OA\Property(property="share_url", type="string", description="URL complète du partage"),
+ *     @OA\Property(
+ *         property="file",
+ *         ref="#/components/schemas/File",
+ *         description="Fichier partagé"
+ *     ),
+ *     @OA\Property(
+ *         property="creator",
+ *         ref="#/components/schemas/User",
+ *         description="Créateur du partage"
+ *     )
+ * )
+ */
 class FileShare extends Model
 {
     use HasFactory;

@@ -25,7 +25,7 @@ class DatabaseSeeder extends Seeder
             PermissionSeeder::class,
             RolePermissionSeeder::class,
             AdministrationSeeder::class,
-            // InscriptionDatabaseSeeder::class,
+            // \App\Modules\Inscription\Database\Seeders\InscriptionDatabaseSeeder::class,
             CycleSeeder::class,
             DepartmentSeeder::class,
         ]);

@@ -14,6 +14,13 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
+/**
+ * @OA\Tag(
+ *     name="Pending Students",
+ *     description="Gestion des étudiants en attente d'inscription"
+ * )
+ */
+
 class PendingStudentController extends Controller
 {
     public function __construct(
@@ -23,7 +30,45 @@ class PendingStudentController extends Controller
     }
 
     /**
-     * Liste des étudiants en attente.
+     * @OA\Get(
+     *     path="/api/pending-students",
+     *     summary="Liste des étudiants en attente",
+     *     description="Récupère la liste paginée des étudiants en attente avec possibilité de filtrage",
+     *     operationId="getPendingStudents",
+     *     tags={"Pending Students"},
+     *     security={{"sanctum": {}}},
+     *     @OA\Parameter(
+     *         name="status",
+     *         in="query",
+     *         description="Filtrer par statut",
+     *         required=false,
+     *         @OA\Schema(type="string", enum={"pending", "documents_submitted", "approved", "rejected"})
+     *     ),
+     *     @OA\Parameter(
+     *         name="entry_level_id",
+     *         in="query",
+     *         description="Filtrer par niveau d'entrée",
+     *         required=false,
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\Parameter(
+     *         name="page",
+     *         in="query",
+     *         description="Numéro de page",
+     *         required=false,
+     *         @OA\Schema(type="integer", minimum=1)
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Liste des étudiants récupérée avec succès",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="data", type="array", @OA\Items(ref="#/components/schemas/PendingStudent")),
+     *             @OA\Property(property="meta", ref="#/components/schemas/PaginationMeta")
+     *         )
+     *     ),
+     *     @OA\Response(response=401, description="Non authentifié")
+     * )
      */
     public function index(Request $request): JsonResponse
     {
@@ -53,7 +98,36 @@ class PendingStudentController extends Controller
     }
 
     /**
-     * Créer un nouvel étudiant en attente.
+     * @OA\Post(
+     *     path="/api/pending-students",
+     *     summary="Créer un étudiant en attente",
+     *     description="Crée un nouvel étudiant en attente d'inscription",
+     *     operationId="createPendingStudent",
+     *     tags={"Pending Students"},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"email", "first_name", "last_name", "phone", "entry_level_id", "entry_diploma_id"},
+     *             @OA\Property(property="email", type="string", format="email", example="student@example.com"),
+     *             @OA\Property(property="first_name", type="string", example="John"),
+     *             @OA\Property(property="last_name", type="string", example="Doe"),
+     *             @OA\Property(property="phone", type="string", example="+1234567890"),
+     *             @OA\Property(property="entry_level_id", type="integer", example=1),
+     *             @OA\Property(property="entry_diploma_id", type="integer", example=1)
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=201,
+     *         description="Étudiant créé avec succès",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Étudiant en attente créé avec succès."),
+     *             @OA\Property(property="data", ref="#/components/schemas/PendingStudent")
+     *         )
+     *     ),
+     *     @OA\Response(response=422, description="Données invalides"),
+     *     @OA\Response(response=500, description="Erreur serveur")
+     * )
      */
     public function store(CreatePendingStudentRequest $request): JsonResponse
     {
@@ -86,7 +160,31 @@ class PendingStudentController extends Controller
     }
 
     /**
-     * Afficher un étudiant en attente.
+     * @OA\Get(
+     *     path="/api/pending-students/{pendingStudent}",
+     *     summary="Détails d'un étudiant en attente",
+     *     description="Récupère les détails d'un étudiant en attente spécifique",
+     *     operationId="getPendingStudent",
+     *     tags={"Pending Students"},
+     *     security={{"sanctum": {}}},
+     *     @OA\Parameter(
+     *         name="pendingStudent",
+     *         in="path",
+     *         description="ID de l'étudiant en attente",
+     *         required=true,
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Détails de l'étudiant récupérés avec succès",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="data", ref="#/components/schemas/PendingStudent")
+     *         )
+     *     ),
+     *     @OA\Response(response=401, description="Non authentifié"),
+     *     @OA\Response(response=404, description="Étudiant non trouvé")
+     * )
      */
     public function show(PendingStudent $pendingStudent): JsonResponse
     {
@@ -97,7 +195,45 @@ class PendingStudentController extends Controller
     }
 
     /**
-     * Mettre à jour un étudiant en attente.
+     * @OA\Put(
+     *     path="/api/pending-students/{pendingStudent}",
+     *     summary="Mettre à jour un étudiant en attente",
+     *     description="Met à jour les informations d'un étudiant en attente",
+     *     operationId="updatePendingStudent",
+     *     tags={"Pending Students"},
+     *     security={{"sanctum": {}}},
+     *     @OA\Parameter(
+     *         name="pendingStudent",
+     *         in="path",
+     *         description="ID de l'étudiant en attente",
+     *         required=true,
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             @OA\Property(property="email", type="string", format="email", example="student@example.com"),
+     *             @OA\Property(property="first_name", type="string", example="John"),
+     *             @OA\Property(property="last_name", type="string", example="Doe"),
+     *             @OA\Property(property="phone", type="string", example="+1234567890"),
+     *             @OA\Property(property="entry_level_id", type="integer", example=1),
+     *             @OA\Property(property="entry_diploma_id", type="integer", example=1)
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Étudiant mis à jour avec succès",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Étudiant en attente mis à jour avec succès."),
+     *             @OA\Property(property="data", ref="#/components/schemas/PendingStudent")
+     *         )
+     *     ),
+     *     @OA\Response(response=401, description="Non authentifié"),
+     *     @OA\Response(response=404, description="Étudiant non trouvé"),
+     *     @OA\Response(response=422, description="Données invalides"),
+     *     @OA\Response(response=500, description="Erreur serveur")
+     * )
      */
     public function update(CreatePendingStudentRequest $request, PendingStudent $pendingStudent): JsonResponse
     {
@@ -119,7 +255,32 @@ class PendingStudentController extends Controller
     }
 
     /**
-     * Supprimer un étudiant en attente.
+     * @OA\Delete(
+     *     path="/api/pending-students/{pendingStudent}",
+     *     summary="Supprimer un étudiant en attente",
+     *     description="Supprime un étudiant en attente",
+     *     operationId="deletePendingStudent",
+     *     tags={"Pending Students"},
+     *     security={{"sanctum": {}}},
+     *     @OA\Parameter(
+     *         name="pendingStudent",
+     *         in="path",
+     *         description="ID de l'étudiant en attente",
+     *         required=true,
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Étudiant supprimé avec succès",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Étudiant en attente supprimé avec succès.")
+     *         )
+     *     ),
+     *     @OA\Response(response=401, description="Non authentifié"),
+     *     @OA\Response(response=404, description="Étudiant non trouvé"),
+     *     @OA\Response(response=500, description="Erreur serveur")
+     * )
      */
     public function destroy(PendingStudent $pendingStudent): JsonResponse
     {
@@ -140,8 +301,61 @@ class PendingStudentController extends Controller
     }
 
     /**
-     * Soumettre des documents pour un étudiant en attente.
-     * Accessible sans authentification pour permettre la soumission anonyme.
+     * @OA\Post(
+     *     path="/api/pending-students/{pendingStudent}/documents",
+     *     summary="Soumettre des documents",
+     *     description="Soumet des documents pour un étudiant en attente (accessible sans authentification)",
+     *     operationId="submitDocuments",
+     *     tags={"Pending Students"},
+     *     @OA\Parameter(
+     *         name="pendingStudent",
+     *         in="path",
+     *         description="ID de l'étudiant en attente",
+     *         required=true,
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\MediaType(
+     *             mediaType="multipart/form-data",
+     *             @OA\Schema(
+     *                 required={"documents", "document_types"},
+     *                 @OA\Property(
+     *                     property="documents",
+     *                     type="array",
+     *                     description="Fichiers à uploader",
+     *                     @OA\Items(type="string", format="binary")
+     *                 ),
+     *                 @OA\Property(
+     *                     property="document_types",
+     *                     type="array",
+     *                     description="Types des documents correspondants",
+     *                     @OA\Items(type="string", example="diploma")
+     *                 )
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Documents soumis avec succès",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Documents soumis avec succès."),
+     *             @OA\Property(property="data", type="object",
+     *                 @OA\Property(property="pending_student", ref="#/components/schemas/PendingStudent"),
+     *                 @OA\Property(property="uploaded_files", type="array", @OA\Items(
+     *                     @OA\Property(property="id", type="integer"),
+     *                     @OA\Property(property="original_name", type="string"),
+     *                     @OA\Property(property="size", type="integer"),
+     *                     @OA\Property(property="mime_type", type="string")
+     *                 ))
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(response=404, description="Étudiant non trouvé"),
+     *     @OA\Response(response=422, description="Données invalides"),
+     *     @OA\Response(response=500, description="Erreur serveur")
+     * )
      */
     public function submitDocuments(Request $request, PendingStudent $pendingStudent): JsonResponse
     {
@@ -207,7 +421,31 @@ class PendingStudentController extends Controller
     }
 
     /**
-     * Récupérer les documents d'un étudiant en attente.
+     * @OA\Get(
+     *     path="/api/pending-students/{pendingStudent}/documents",
+     *     summary="Récupérer les documents",
+     *     description="Récupère la liste des documents soumis par un étudiant en attente",
+     *     operationId="getPendingStudentDocuments",
+     *     tags={"Pending Students"},
+     *     security={{"sanctum": {}}},
+     *     @OA\Parameter(
+     *         name="pendingStudent",
+     *         in="path",
+     *         description="ID de l'étudiant en attente",
+     *         required=true,
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Documents récupérés avec succès",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="data", type="array", @OA\Items(type="object"), description="Liste des fichiers")
+     *         )
+     *     ),
+     *     @OA\Response(response=401, description="Non authentifié"),
+     *     @OA\Response(response=404, description="Étudiant non trouvé")
+     * )
      */
     public function getDocuments(Request $request, PendingStudent $pendingStudent): JsonResponse
     {
