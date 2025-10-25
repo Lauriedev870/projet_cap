@@ -1,6 +1,6 @@
 <?php
 
-namespace Cap\LaravelCoreModels\Models;
+namespace App\Modules\Inscription\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;

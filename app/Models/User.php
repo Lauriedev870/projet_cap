@@ -18,9 +18,17 @@ class User extends Authenticatable
      * @var list<string>
      */
     protected $fillable = [
-        'name',
+        'last_name',
+        'first_name',
         'email',
         'password',
+        'phone',
+        'rib_number',
+        'rib',
+        'photo',
+        'ifu_number',
+        'ifu',
+        'bank',
     ];
 
     /**
@@ -44,5 +52,21 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($model) {
+            if (empty($model->uuid)) {
+                $model->uuid = (string) \Illuminate\Support\Str::uuid();
+            }
+        });
+    }
+
+    public function roles()
+    {
+        return $this->belongsToMany(\App\Modules\Stockage\Models\Role::class, 'role_user');
     }
 }
