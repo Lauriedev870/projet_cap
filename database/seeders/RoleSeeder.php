@@ -26,6 +26,12 @@ class RoleSeeder extends Seeder
                 'is_system' => true,
             ],
             [
+                'name' => 'chef_division_continue',
+                'display_name' => 'Chef Division Formation Continue',
+                'description' => 'Chef de la division Formation Continue (Ingénierie et Master)',
+                'is_system' => true,
+            ],
+            [
                 'name' => 'comptable',
                 'display_name' => 'Comptable',
                 'description' => 'Responsable de la comptabilité',
@@ -47,6 +53,12 @@ class RoleSeeder extends Seeder
                 'name' => 'responsable',
                 'display_name' => 'Responsable',
                 'description' => 'Responsable pédagogique',
+                'is_system' => true,
+            ],
+            [
+                'name' => 'soutien_informatique',
+                'display_name' => 'Soutien Informatique',
+                'description' => 'Membre du support technique et développement',
                 'is_system' => true,
             ],
         ];
