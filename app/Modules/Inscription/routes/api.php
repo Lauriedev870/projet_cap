@@ -48,12 +48,9 @@ Route::prefix('submissions')->group(function () {
 });
 
 // Academic years routes
-<<<<<<< HEAD
 Route::prefix('api/academic-years')->group(function () {
     // Routes publiques pour les candidatures (gérées par le constructeur du controller)
-=======
 Route::prefix('academic-years')->group(function () {
->>>>>>> 5320eb2 (draft)
     Route::get('/', [SubmissionController::class, 'getAcademicYears']);
     Route::get('/{academicYear}', [SubmissionController::class, 'getAcademicYear']);
 
@@ -87,7 +84,6 @@ Route::prefix('students')->group(function () {
 });
 
 // Cycles routes
-<<<<<<< HEAD
 Route::get('/api/cycles', [CycleController::class, 'index']);
 Route::get('/api/filieres', [CycleController::class, 'allDepartmentsWithPeriods']);
 Route::get('/api/next-deadline', [CycleController::class, 'nextDeadline']);
@@ -97,7 +93,6 @@ Route::prefix('api/public')->group(function () {
     Route::get('/academic-years', [PublicReferenceController::class, 'academicYears']);
     Route::get('/academic-years/department/{departmentId}', [PublicReferenceController::class, 'academicYearsForDepartment']);
     Route::get('/entry-diplomas', [PublicReferenceController::class, 'entryDiplomas']);
-=======
 Route::get('/cycles', [CycleController::class, 'index']);
 Route::get('/filieres', [CycleController::class, 'allDepartmentsWithPeriods']);
 Route::get('/next-deadline', [CycleController::class, 'nextDeadline']);
@@ -106,5 +101,4 @@ Route::get('/next-deadline', [CycleController::class, 'nextDeadline']);
 Route::prefix('inscription')->middleware('auth:sanctum')->group(function () {
     Route::get('/stats', [DashboardController::class, 'stats']);
     Route::get('/graphes', [DashboardController::class, 'graphes']);
->>>>>>> 5320eb2 (draft)
 });
