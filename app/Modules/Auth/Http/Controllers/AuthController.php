@@ -6,9 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Modules\Auth\Http\Requests\LoginRequest;
 use App\Modules\Auth\Http\Requests\RegisterRequest;
 use App\Modules\Auth\Services\AuthService;
+use App\Traits\ApiResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
-use Exception;
 
 /**
  * @OA\Tag(
@@ -18,6 +17,8 @@ use Exception;
  */
 class AuthController extends Controller
 {
+    use ApiResponse;
+
     public function __construct(
         protected AuthService $authService
     ) {}
@@ -50,12 +51,8 @@ class AuthController extends Controller
      */
     public function login(LoginRequest $request)
     {
-        try {
-            $result = $this->authService->login($request->validated());
-            return response()->json($result);
-        } catch (Exception $e) {
-            throw $e;
-        }
+        $result = $this->authService->login($request->validated());
+        return response()->json($result);
     }
 
     /**
@@ -90,16 +87,8 @@ class AuthController extends Controller
      */
     public function register(RegisterRequest $request)
     {
-        try {
-            $result = $this->authService->register($request->validated());
-            return response()->json($result, 201);
-        } catch (Exception $e) {
-            Log::error('Erreur inscription', ['error' => $e->getMessage()]);
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors de l\'inscription.',
-            ], 500);
-        }
+        $result = $this->authService->register($request->validated());
+        return response()->json($result, 201);
     }
 
     /**
@@ -122,15 +111,11 @@ class AuthController extends Controller
      */
     public function logout(Request $request)
     {
-        try {
-            $user = $request->user();
-            if ($user && $user->currentAccessToken()) {
-                $this->authService->logoutCurrent($user, $user->currentAccessToken());
-            }
-            return response()->json(['message' => 'Logged out']);
-        } catch (Exception $e) {
-            return response()->json(['message' => 'Logout failed'], 500);
+        $user = $request->user();
+        if ($user && $user->currentAccessToken()) {
+            $this->authService->logoutCurrent($user, $user->currentAccessToken());
         }
+        return $this->successResponse(null, 'Déconnexion réussie');
     }
 
     /**
@@ -151,11 +136,7 @@ class AuthController extends Controller
      */
     public function me(Request $request)
     {
-        try {
-            $user = $this->authService->me($request->user());
-            return response()->json($user);
-        } catch (Exception $e) {
-            return response()->json(['message' => 'Error'], 500);
-        }
+        $user = $this->authService->me($request->user());
+        return $this->successResponse($user, 'Utilisateur récupéré avec succès');
     }
 }

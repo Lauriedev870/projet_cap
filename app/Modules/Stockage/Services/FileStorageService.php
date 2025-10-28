@@ -102,7 +102,7 @@ class FileStorageService
     public function downloadFile(File $file, ?int $userId = null): array
     {
         if (!$file->exists()) {
-            throw new \RuntimeException('Le fichier n\'existe pas sur le disque.');
+            throw new \App\Exceptions\ResourceNotFoundException('Fichier sur le disque');
         }
 
         // Incrémenter le compteur

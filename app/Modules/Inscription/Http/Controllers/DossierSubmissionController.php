@@ -13,7 +13,7 @@ use App\Modules\Inscription\Models\SubmissionPeriod;
 use App\Modules\Inscription\Services\DossierSubmissionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
+use App\Traits\ApiResponse;
 
 /**
  * @OA\Tag(
@@ -23,6 +23,8 @@ use Illuminate\Support\Facades\Log;
  */
 class DossierSubmissionController extends Controller
 {
+    use ApiResponse;
+
     public function __construct(private DossierSubmissionService $submissionService)
     {
     }
@@ -59,32 +61,16 @@ class DossierSubmissionController extends Controller
         $validCycles = ['Licence', 'Master', 'Ingénieur'];
 
         if (!in_array($cycleName, $validCycles)) {
-            return response()->json(['error' => 'Cycle invalide spécifié'], 400);
+            return $this->errorResponse('Cycle invalide spécifié', 'INVALID_CYCLE', 400);
         }
 
-        $submissionPeriods = SubmissionPeriod::whereHas('department.cycle', function ($query) use ($cycleName) {
-                $query->where('name', $cycleName);
-            })
-            ->where('start_date', '<=', $currentDate)
-            ->where('end_date', '>=', $currentDate)
-            ->with(['department', 'academicYear'])
-            ->get();
+        $periods = $this->submissionService->getActiveSubmissionPeriods($cycleName);
 
-        if ($submissionPeriods->isEmpty()) {
-            return response()->json(['error' => "No active submission periods for {$cycleName}"], 404);
+        if (empty($periods)) {
+            return $this->errorResponse("Aucune période active pour {$cycleName}", 'NO_ACTIVE_PERIOD', 404);
         }
 
-        return response()->json([
-            'data' => $submissionPeriods->map(function ($period) {
-                return [
-                    'id' => $period->id,
-                    'department' => $period->department->name,
-                    'academic_year' => $period->academicYear->academic_year,
-                    'start_date' => $period->start_date,
-                    'end_date' => $period->end_date,
-                ];
-            }),
-        ], 200);
+        return $this->successResponse($periods, 'Périodes récupérées avec succès');
     }
 
     /**
@@ -142,8 +128,7 @@ class DossierSubmissionController extends Controller
             'all_inputs' => $request->except(['photo', 'demande_da', 'cv', 'acte_naissance', 'diplome_bac', 'diplome_licence', 'attestation_travail', 'quittance_rectorat', 'quittance_cap', 'attestation_depot_dossier'])
         ]);
 
-        try {
-            $fileFields = [
+        $fileFields = [
                 'demande_da' => 'Demande manuscrite adressée au D/EPAC',
                 'cv' => 'Curriculum Vitae',
                 'acte_naissance' => "Photocopie de l’extrait d’acte de naissance légalisé ou sécurisé",
@@ -155,17 +140,14 @@ class DossierSubmissionController extends Controller
                 'attestation_depot_dossier' => 'Attestation de dépôt de dossier pour diplômes étrangers',
             ];
 
-            $result = $this->submissionService->submitDossier(
-                $request,
-                'Licence Professionnelle',
-                ['Baccalauréat Scientifique', 'BTS', 'DTI', 'DUT', 'DEAT'],
-                $fileFields
-            );
+        $result = $this->submissionService->submitDossier(
+            $request,
+            'Licence Professionnelle',
+            ['Baccalauréat Scientifique', 'BTS', 'DTI', 'DUT', 'DEAT'],
+            $fileFields
+        );
 
-            return response()->json($result, 201);
-        } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 400);
-        }
+        return $this->createdResponse($result, 'Dossier Licence soumis avec succès');
     }
 
     /**
@@ -187,8 +169,7 @@ class DossierSubmissionController extends Controller
      */
     public function submitMasterDossier(SubmitMasterDossierRequest $request): JsonResponse
     {
-        try {
-            $fileFields = [
+        $fileFields = [
                 'demande_da' => 'Demande manuscrite adressée au D/EPAC',
                 'cv' => 'Curriculum Vitae',
                 'acte_naissance' => "Photocopie de l’extrait d’acte de naissance légalisé ou sécurisé",
@@ -201,17 +182,14 @@ class DossierSubmissionController extends Controller
                 'attestation_anglais' => 'Attestation d’Anglais pour le secteur biologique',
             ];
 
-            $result = $this->submissionService->submitDossier(
-                $request,
-                'Master Professionnel',
-                ['Licence Professionnelle'],
-                $fileFields
-            );
+        $result = $this->submissionService->submitDossier(
+            $request,
+            'Master Professionnel',
+            ['Licence Professionnelle'],
+            $fileFields
+        );
 
-            return response()->json($result, 201);
-        } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], $e->getCode() ?: 400);
-        }
+        return $this->createdResponse($result, 'Dossier Master soumis avec succès');
     }
 
     /**
@@ -233,8 +211,7 @@ class DossierSubmissionController extends Controller
      */
     public function submitIngenieurPrepaDossier(SubmitIngenieurPrepaDossierRequest $request): JsonResponse
     {
-        try {
-            $fileFields = [
+        $fileFields = [
                 'demande_da' => 'Demande manuscrite adressée au D/EPAC',
                 'cv' => 'Curriculum Vitae',
                 'acte_naissance' => "Photocopie de l’extrait d’acte de naissance légalisé ou sécurisé",
@@ -246,17 +223,14 @@ class DossierSubmissionController extends Controller
                 'attestation_depot_dossier' => 'Attestation de dépôt de dossier pour diplômes étrangers',
             ];
 
-            $result = $this->submissionService->submitDossier(
-                $request,
-                'Ingénierie',
-                ['Licence Professionnelle'],
-                $fileFields
-            );
+        $result = $this->submissionService->submitDossier(
+            $request,
+            'Ingénierie',
+            ['Licence Professionnelle'],
+            $fileFields
+        );
 
-            return response()->json($result, 201);
-        } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], $e->getCode() ?: 400);
-        }
+        return $this->createdResponse($result, 'Dossier Ingénieur Prépa soumis avec succès');
     }
 
     /**
@@ -278,28 +252,24 @@ class DossierSubmissionController extends Controller
      */
     public function submitIngenieurSpecialiteDossier(SubmitIngenieurSpecialiteDossierRequest $request): JsonResponse
     {
-        try {
-            $this->submissionService->validateIngenieurSpecialiteEligibility(
-                $request->student_id_number,
-                $request->department_id
-            );
+        $this->submissionService->validateIngenieurSpecialiteEligibility(
+            $request->student_id_number,
+            $request->department_id
+        );
 
-            $fileFields = [
-                'certificat_prepa' => 'Certificat de Classes Préparatoires',
-            ];
+        $fileFields = [
+            'certificat_prepa' => 'Certificat de Classes Préparatoires',
+        ];
 
-            $result = $this->submissionService->submitDossier(
-                $request,
-                'Ingénieur',
-                ['Certificat de Classes Préparatoires'],
-                $fileFields,
-                false
-            );
+        $result = $this->submissionService->submitDossier(
+            $request,
+            'Ingénieur',
+            ['Certificat de Classes Préparatoires'],
+            $fileFields,
+            false
+        );
 
-            return response()->json($result, 201);
-        } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 400);
-        }
+        return $this->createdResponse($result, 'Dossier Ingénieur Spécialité soumis avec succès');
     }
 
     /**
@@ -315,65 +285,9 @@ class DossierSubmissionController extends Controller
      */
     public function getDossier(string $trackingCode): JsonResponse
     {
-        $pendingStudent = PendingStudent::where('tracking_code', $trackingCode)
-            ->with(['personalInformation', 'department', 'academicYear', 'entryDiploma'])
-            ->first();
-
-        if (!$pendingStudent) {
-            return response()->json(['error' => 'Dossier not found.'], 404);
-        }
-
-        $status = 'pending';
-        $message = '';
-        $sourceDecision = '';
-
-        if ($pendingStudent->cuca_opinion != "") {
-            $status = $pendingStudent->cuca_opinion;
-            $message = $pendingStudent->cuca_comment;
-            $sourceDecision = 'cuca';
-            if ($pendingStudent->cuo_opion != "") {
-                $status = $pendingStudent->cuo_opinion;
-                $message = $pendingStudent->rejection_reason;
-                $sourceDecision = 'cuo';
-            }
-        }
-
-        // Récupérer et décoder les documents manuellement
-        $documentsRaw = $pendingStudent->getAttributes()['documents'] ?? null;
-        $documents = null;
+        $dossierData = $this->submissionService->getDossierByTrackingCode($trackingCode);
         
-        if ($documentsRaw) {
-            // Si c'est déjà un array (grâce au cast), l'utiliser directement
-            if (is_array($documentsRaw)) {
-                $documents = $documentsRaw;
-            } else {
-                // Sinon, décoder le JSON
-                $documents = json_decode($documentsRaw, true);
-            }
-        }
-
-        return response()->json([
-            'data' => [
-                'tracking_code' => $pendingStudent->tracking_code,
-                'last_name' => $pendingStudent->personalInformation->last_name ?? '',
-                'first_names' => $pendingStudent->personalInformation->first_names ?? '',
-                'email' => $pendingStudent->personalInformation->email ?? '',
-                'birth_date' => $pendingStudent->personalInformation->birth_date ?? null,
-                'birth_place' => $pendingStudent->personalInformation->birth_place ?? '',
-                'birth_country' => $pendingStudent->personalInformation->birth_country ?? '',
-                'gender' => $pendingStudent->personalInformation->gender ?? '',
-                'contacts' => $pendingStudent->personalInformation->contacts ?? [], // Déjà en array grâce au cast
-                'study_level' => $pendingStudent->level,
-                'entry_diploma' => $pendingStudent->entryDiploma->name ?? null,
-                'department' => $pendingStudent->department->name ?? '',
-                'academic_year' => $pendingStudent->academicYear->academic_year ?? '',
-                'documents' => $documents,
-                'photo' => $pendingStudent->photo,
-                'status' => $status,
-                'message' => $message,
-                'source_decision' => $sourceDecision
-            ],
-        ], 200);
+        return $this->successResponse($dossierData, 'Dossier récupéré avec succès');
     }
 
     /**
@@ -398,17 +312,13 @@ class DossierSubmissionController extends Controller
      */
     public function submitComplementDossier(SubmitCompletedDossierRequest $request, string $trackingCode): JsonResponse
     {
-        try {
-            $validated = $request->validated();
+        $validated = $request->validated();
 
-            $result = $this->submissionService->submitComplementDossier(
-                $validated,
-                $trackingCode
-            );
+        $result = $this->submissionService->submitComplementDossier(
+            $validated,
+            $trackingCode
+        );
 
-            return response()->json($result, 201);
-        } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], $e->getCode() ?: 400);
-        }
+        return $this->createdResponse($result, 'Compléments soumis avec succès');
     }
 }

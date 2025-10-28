@@ -4,10 +4,10 @@ namespace App\Modules\Inscription\Services;
 
 use App\Modules\Inscription\Models\AcademicYear;
 use App\Modules\Inscription\Models\SubmissionPeriod;
+use App\Exceptions\BusinessException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
-use Exception;
 
 class AcademicYearService
 {
@@ -42,7 +42,11 @@ class AcademicYearService
             // Vérifier si elle existe déjà
             $exists = AcademicYear::where('academic_year', $academicYearLabel)->exists();
             if ($exists) {
-                throw new Exception("L'année académique $academicYearLabel existe déjà.");
+                throw new BusinessException(
+                    message: "L'année académique $academicYearLabel existe déjà",
+                    errorCode: 'ACADEMIC_YEAR_EXISTS',
+                    statusCode: 409
+                );
             }
 
             $year = AcademicYear::create([
@@ -210,5 +214,88 @@ class AcademicYearService
     public function getAllYears()
     {
         return AcademicYear::orderBy('year_start', 'desc')->get();
+    }
+
+    /**
+     * Ajouter des périodes de soumission pour des départements
+     */
+    public function addPeriods(AcademicYear $academicYear, array $data): void
+    {
+        DB::transaction(function () use ($academicYear, $data) {
+            foreach ($data['departments'] as $departmentId) {
+                // Vérifier les chevauchements
+                $overlap = SubmissionPeriod::where('department_id', $departmentId)
+                    ->where('academic_year_id', $academicYear->id)
+                    ->where(function ($q) use ($data) {
+                        $q->whereBetween('start_date', [$data['start_date'], $data['end_date']])
+                          ->orWhereBetween('end_date', [$data['start_date'], $data['end_date']])
+                          ->orWhere(function ($qq) use ($data) {
+                              $qq->where('start_date', '<=', $data['start_date'])
+                                 ->where('end_date', '>=', $data['end_date']);
+                          });
+                    })
+                    ->exists();
+
+                if ($overlap) {
+                    throw new \App\Exceptions\PeriodOverlapException($departmentId);
+                }
+
+                SubmissionPeriod::create([
+                    'academic_year_id' => $academicYear->id,
+                    'department_id' => $departmentId,
+                    'start_date' => $data['start_date'],
+                    'end_date' => $data['end_date'],
+                ]);
+            }
+
+            Log::info('Périodes ajoutées', [
+                'academic_year_id' => $academicYear->id,
+                'departments' => $data['departments'],
+            ]);
+        });
+    }
+
+    /**
+     * Étendre les périodes de soumission
+     */
+    public function extendPeriods(AcademicYear $academicYear, array $data): int
+    {
+        return DB::transaction(function () use ($academicYear, $data) {
+            $updated = SubmissionPeriod::where('academic_year_id', $academicYear->id)
+                ->where('start_date', $data['start_date'])
+                ->where('end_date', $data['old_end_date'])
+                ->whereIn('department_id', $data['departments'])
+                ->update(['end_date' => $data['new_end_date']]);
+
+            Log::info('Périodes étendues', [
+                'academic_year_id' => $academicYear->id,
+                'departments' => $data['departments'],
+                'updated_count' => $updated,
+            ]);
+
+            return $updated;
+        });
+    }
+
+    /**
+     * Supprimer des périodes de soumission
+     */
+    public function deletePeriods(AcademicYear $academicYear, array $data): int
+    {
+        return DB::transaction(function () use ($academicYear, $data) {
+            $deleted = SubmissionPeriod::where('academic_year_id', $academicYear->id)
+                ->where('start_date', $data['start_date'])
+                ->where('end_date', $data['end_date'])
+                ->whereIn('department_id', $data['departments'])
+                ->delete();
+
+            Log::info('Périodes supprimées', [
+                'academic_year_id' => $academicYear->id,
+                'departments' => $data['departments'],
+                'deleted_count' => $deleted,
+            ]);
+
+            return $deleted;
+        });
     }
 }

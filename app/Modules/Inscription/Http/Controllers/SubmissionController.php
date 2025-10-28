@@ -12,7 +12,9 @@ use App\Modules\Inscription\Http\Resources\ReclamationPeriodResource;
 use App\Modules\Inscription\Http\Resources\AcademicYearResource;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use App\Modules\Inscription\Http\Requests\CheckReclamationStatusRequest;
 use Illuminate\Support\Str;
+use App\Traits\ApiResponse;
 
 /**
  * @OA\Tag(
@@ -20,9 +22,10 @@ use Illuminate\Support\Str;
  *     description="Gestion des périodes de soumission et réclamation"
  * )
  */
-
 class SubmissionController extends Controller
 {
+    use ApiResponse;
+
     public function __construct(
         protected AcademicYearService $academicYearService
     ) {
@@ -50,16 +53,12 @@ class SubmissionController extends Controller
      */
     public function getActiveSubmissionPeriods(): JsonResponse
     {
-        $activePeriods = SubmissionPeriod::with(['academicYear'])
-            ->where('is_active', true)
-            ->where('start_date', '<=', now())
-            ->where('end_date', '>=', now())
-            ->get();
+        $activePeriods = $this->academicYearService->getActiveSubmissionPeriods();
 
-        return response()->json([
-            'success' => true,
-            'data' => SubmissionPeriodResource::collection($activePeriods),
-        ]);
+        return $this->successResponse(
+            SubmissionPeriodResource::collection($activePeriods),
+            'Périodes de soumission actives récupérées avec succès'
+        );
     }
 
     /**
@@ -83,16 +82,12 @@ class SubmissionController extends Controller
      */
     public function getActiveReclamationPeriods(): JsonResponse
     {
-        $activePeriods = ReclamationPeriod::with(['academicYear'])
-            ->where('is_active', true)
-            ->where('start_date', '<=', now())
-            ->where('end_date', '>=', now())
-            ->get();
+        $activePeriods = $this->academicYearService->getActiveReclamationPeriods();
 
-        return response()->json([
-            'success' => true,
-            'data' => ReclamationPeriodResource::collection($activePeriods),
-        ]);
+        return $this->successResponse(
+            ReclamationPeriodResource::collection($activePeriods),
+            'Périodes de réclamation actives récupérées avec succès'
+        );
     }
 
     /**
@@ -129,27 +124,9 @@ class SubmissionController extends Controller
      */
     public function checkSubmissionStatus(Request $request): JsonResponse
     {
-        $request->validate([
-            'academic_year_id' => 'required|exists:academic_years,id',
-        ]);
-
-        $academicYear = AcademicYear::find($request->academic_year_id);
-
-        $isOpen = $academicYear->submission_start <= now() && $academicYear->submission_end >= now();
-
-        $submissionPeriod = SubmissionPeriod::where('academic_year_id', $request->academic_year_id)
-            ->where('is_active', true)
-            ->first();
-
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'is_open' => $isOpen,
-                'academic_year' => new AcademicYearResource($academicYear),
-                'submission_period' => $submissionPeriod ? new SubmissionPeriodResource($submissionPeriod) : null,
-                'current_time' => now()->toISOString(),
-            ],
-        ]);
+        $statusData = $this->academicYearService->checkSubmissionStatus($request->academic_year_id);
+        
+        return $this->successResponse($statusData, 'Statut de soumission vérifié avec succès');
     }
 
     /**
@@ -184,29 +161,11 @@ class SubmissionController extends Controller
      *     @OA\Response(response=422, description="Données invalides")
      * )
      */
-    public function checkReclamationStatus(Request $request): JsonResponse
+    public function checkReclamationStatus(CheckReclamationStatusRequest $request): JsonResponse
     {
-        $request->validate([
-            'academic_year_id' => 'required|exists:academic_years,id',
-        ]);
-
-        $academicYear = AcademicYear::find($request->academic_year_id);
-
-        $isOpen = $academicYear->reclamation_start <= now() && $academicYear->reclamation_end >= now();
-
-        $reclamationPeriod = ReclamationPeriod::where('academic_year_id', $request->academic_year_id)
-            ->where('is_active', true)
-            ->first();
-
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'is_open' => $isOpen,
-                'academic_year' => new AcademicYearResource($academicYear),
-                'reclamation_period' => $reclamationPeriod ? new ReclamationPeriodResource($reclamationPeriod) : null,
-                'current_time' => now()->toISOString(),
-            ],
-        ]);
+        $statusData = $this->academicYearService->checkReclamationStatus($request->academic_year_id);
+        
+        return $this->successResponse($statusData, 'Statut de réclamation vérifié avec succès');
     }
 
     /**
@@ -232,10 +191,10 @@ class SubmissionController extends Controller
     {
         $academicYears = $this->academicYearService->getAllYears();
 
-        return response()->json([
-            'success' => true,
-            'data' => AcademicYearResource::collection($academicYears),
-        ]);
+        return $this->successResponse(
+            AcademicYearResource::collection($academicYears),
+            'Années académiques récupérées avec succès'
+        );
     }
 
     /**
@@ -257,25 +216,6 @@ class SubmissionController extends Controller
      *         response=200,
      *         description="Année académique récupérée avec succès",
      *         @OA\JsonContent(
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="data", ref="#/components/schemas/AcademicYear")
-     *         )
-     *     ),
-     *     @OA\Response(response=401, description="Non authentifié"),
-     *     @OA\Response(response=404, description="Année académique non trouvée")
-     * )
-     */
-    public function getAcademicYear(AcademicYear $academicYear): JsonResponse
-    {
-        return response()->json([
-            'success' => true,
-            'data' => new AcademicYearResource($academicYear->load(['submissionPeriods', 'reclamationPeriods'])),
-        ]);
-    }
-
-    /**
-     * @OA\Post(
-     *     path="/api/submissions",
      *     summary="Créer une période de soumission",
      *     description="Crée une nouvelle période de soumission pour une filière et une année académique",
      *     operationId="createSubmissionPeriod",
@@ -306,25 +246,12 @@ class SubmissionController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
-        $validated = $request->validate([
-            'academic_year_id' => ['required','exists:academic_years,id'],
-            'department_id' => ['required','exists:departments,id'],
-            'start_date' => ['required','date'],
-            'end_date' => ['required','date','after_or_equal:start_date'],
-        ]);
+        $period = $this->academicYearService->createSubmissionPeriod($request->all());
 
-        $period = new SubmissionPeriod();
-        $period->uuid = (string) Str::uuid();
-        $period->academic_year_id = $validated['academic_year_id'];
-        $period->department_id = $validated['department_id'];
-        $period->start_date = $validated['start_date'];
-        $period->end_date = $validated['end_date'];
-        $period->save();
-
-        return response()->json([
-            'success' => true,
-            'data' => new SubmissionPeriodResource($period->fresh()),
-        ], 201);
+        return $this->createdResponse(
+            new SubmissionPeriodResource($period),
+            'Période de soumission créée avec succès'
+        );
     }
 
     /**
@@ -366,31 +293,13 @@ class SubmissionController extends Controller
      */
     public function update(Request $request, SubmissionPeriod $submissionPeriod): JsonResponse
     {
-        $validated = $request->validate([
-            'academic_year_id' => ['sometimes','exists:academic_years,id'],
-            'department_id' => ['sometimes','exists:departments,id'],
-            'start_date' => ['sometimes','date'],
-            'end_date' => ['sometimes','date','after_or_equal:start_date'],
-        ]);
+        // TODO: Créer UpdateSubmissionPeriodRequest
+        $updatedPeriod = $this->academicYearService->updateSubmissionPeriod($submissionPeriod, $request->all());
 
-        if (array_key_exists('academic_year_id', $validated)) {
-            $submissionPeriod->academic_year_id = $validated['academic_year_id'];
-        }
-        if (array_key_exists('department_id', $validated)) {
-            $submissionPeriod->department_id = $validated['department_id'];
-        }
-        if (array_key_exists('start_date', $validated)) {
-            $submissionPeriod->start_date = $validated['start_date'];
-        }
-        if (array_key_exists('end_date', $validated)) {
-            $submissionPeriod->end_date = $validated['end_date'];
-        }
-        $submissionPeriod->save();
-
-        return response()->json([
-            'success' => true,
-            'data' => new SubmissionPeriodResource($submissionPeriod->fresh()),
-        ]);
+        return $this->updatedResponse(
+            new SubmissionPeriodResource($updatedPeriod),
+            'Période de soumission mise à jour avec succès'
+        );
     }
 
     /**
@@ -422,9 +331,8 @@ class SubmissionController extends Controller
      */
     public function destroy(SubmissionPeriod $submissionPeriod): JsonResponse
     {
-        $submissionPeriod->delete();
-        return response()->json([
-            'success' => true,
-        ]);
+        $this->academicYearService->deleteSubmissionPeriod($submissionPeriod);
+
+        return $this->deletedResponse('Période de soumission supprimée avec succès');
     }
 }

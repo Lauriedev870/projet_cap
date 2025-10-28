@@ -13,6 +13,7 @@ use App\Modules\Stockage\Http\Resources\FileResource;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use App\Traits\ApiResponse;
 
 /**
  * @OA\Tag(
@@ -20,9 +21,10 @@ use Illuminate\Support\Facades\Auth;
  *     description="Gestion du partage de fichiers"
  * )
  */
-
 class FileShareController extends Controller
 {
+    use ApiResponse;
+
     public function __construct(
         protected FileShareService $shareService,
         protected FileStorageService $storageService
@@ -115,8 +117,7 @@ class FileShareController extends Controller
     {
         $this->authorize('share', $file);
 
-        try {
-            $options = [
+        $options = [
                 'password' => $request->input('password'),
                 'allow_download' => $request->input('allow_download', true),
                 'allow_preview' => $request->input('allow_preview', true),
@@ -133,13 +134,6 @@ class FileShareController extends Controller
                 'message' => 'Lien de partage créé avec succès.',
                 'data' => new FileShareResource($share),
             ], 201);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors de la création du partage.',
-                'error' => $e->getMessage(),
-            ], 500);
-        }
     }
 
     /**
@@ -241,21 +235,13 @@ class FileShareController extends Controller
             ], 403);
         }
 
-        try {
-            $share = $this->shareService->deactivateShare($share, Auth::id());
+        $share = $this->shareService->deactivateShare($share, Auth::id());
 
             return response()->json([
                 'success' => true,
                 'message' => 'Partage désactivé avec succès.',
                 'data' => new FileShareResource($share),
             ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors de la désactivation du partage.',
-                'error' => $e->getMessage(),
-            ], 500);
-        }
     }
 
     /**
@@ -305,20 +291,12 @@ class FileShareController extends Controller
             ], 403);
         }
 
-        try {
-            $this->shareService->deleteShare($share, Auth::id());
+        $this->shareService->deleteShare($share, Auth::id());
 
             return response()->json([
                 'success' => true,
                 'message' => 'Partage supprimé avec succès.',
             ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors de la suppression du partage.',
-                'error' => $e->getMessage(),
-            ], 500);
-        }
     }
 
     /**
@@ -367,8 +345,7 @@ class FileShareController extends Controller
             ], 404);
         }
 
-        try {
-            $result = $this->shareService->accessSharedFile(
+        $result = $this->shareService->accessSharedFile(
                 $share,
                 $request->input('password'),
                 false
@@ -381,12 +358,6 @@ class FileShareController extends Controller
                     'share' => new FileShareResource($result['share']),
                 ],
             ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage(),
-            ], 403);
-        }
     }
 
     /**
@@ -429,8 +400,7 @@ class FileShareController extends Controller
             ], 404);
         }
 
-        try {
-            $result = $this->shareService->accessSharedFile(
+        $result = $this->shareService->accessSharedFile(
                 $share,
                 $request->input('password'),
                 true
@@ -449,11 +419,5 @@ class FileShareController extends Controller
                     'Content-Disposition' => 'attachment; filename="' . $download['filename'] . '"',
                 ]
             );
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage(),
-            ], 403);
-        }
     }
 }

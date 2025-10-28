@@ -2,13 +2,14 @@
 
 namespace App\Modules\Cours\Models;
 
+use App\Traits\HasUuid;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Modules\Stockage\Models\File;
 
 class CourseElementResource extends Model
 {
-    use HasFactory;
+    use HasFactory, HasUuid;
 
     protected $fillable = [
         'course_element_id',

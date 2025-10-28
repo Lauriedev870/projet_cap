@@ -12,8 +12,6 @@ class StudentPendingStudent extends Model
     protected $fillable = [
         'student_id',
         'pending_student_id',
-        'status',
-        'notes',
     ];
 
     public function student()

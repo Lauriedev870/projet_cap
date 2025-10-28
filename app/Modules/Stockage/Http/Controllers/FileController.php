@@ -13,6 +13,7 @@ use App\Modules\Stockage\Http\Resources\FileActivityResource;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use App\Traits\ApiResponse;
 
 /**
  * @OA\Tag(
@@ -20,9 +21,10 @@ use Illuminate\Support\Facades\Auth;
  *     description="Gestion des fichiers et stockage"
  * )
  */
-
 class FileController extends Controller
 {
+    use ApiResponse;
+
     public function __construct(
         protected FileStorageService $storageService,
         protected PermissionService $permissionService
@@ -140,8 +142,7 @@ class FileController extends Controller
      */
     public function store(UploadFileRequest $request): JsonResponse
     {
-        try {
-            $file = $this->storageService->uploadFile(
+        $file = $this->storageService->uploadFile(
                 uploadedFile: $request->file('file'),
                 userId: Auth::id(),
                 visibility: $request->input('visibility', 'private'),
@@ -157,13 +158,6 @@ class FileController extends Controller
                 'message' => 'Fichier uploadé avec succès.',
                 'data' => new FileResource($file),
             ], 201);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors de l\'upload du fichier.',
-                'error' => $e->getMessage(),
-            ], 500);
-        }
     }
 
     /**
@@ -246,8 +240,7 @@ class FileController extends Controller
     {
         $this->authorize('update', $file);
 
-        try {
-            if ($request->has('collection')) {
+        if ($request->has('collection')) {
                 $file = $this->storageService->moveToCollection(
                     $file,
                     $request->input('collection'),
@@ -264,13 +257,6 @@ class FileController extends Controller
                 'message' => 'Fichier mis à jour avec succès.',
                 'data' => new FileResource($file->fresh()),
             ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors de la mise à jour du fichier.',
-                'error' => $e->getMessage(),
-            ], 500);
-        }
     }
 
     /**
@@ -306,20 +292,12 @@ class FileController extends Controller
     {
         $this->authorize('delete', $file);
 
-        try {
-            $this->storageService->deleteFile($file, Auth::id());
+        $this->storageService->deleteFile($file, Auth::id());
 
             return response()->json([
                 'success' => true,
                 'message' => 'Fichier supprimé avec succès.',
             ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors de la suppression du fichier.',
-                'error' => $e->getMessage(),
-            ], 500);
-        }
     }
 
     /**
@@ -352,8 +330,7 @@ class FileController extends Controller
     {
         $this->authorize('download', $file);
 
-        try {
-            $download = $this->storageService->downloadFile($file, Auth::id());
+        $download = $this->storageService->downloadFile($file, Auth::id());
 
             return response()->stream(
                 function () use ($download) {
@@ -365,13 +342,6 @@ class FileController extends Controller
                     'Content-Disposition' => 'attachment; filename="' . $download['filename'] . '"',
                 ]
             );
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors du téléchargement du fichier.',
-                'error' => $e->getMessage(),
-            ], 500);
-        }
     }
 
     /**
@@ -420,8 +390,7 @@ class FileController extends Controller
             'visibility' => 'required|in:public,private',
         ]);
 
-        try {
-            $file = $this->storageService->changeVisibility(
+        $file = $this->storageService->changeVisibility(
                 $file,
                 $request->input('visibility'),
                 Auth::id()
@@ -432,13 +401,6 @@ class FileController extends Controller
                 'message' => 'Visibilité modifiée avec succès.',
                 'data' => new FileResource($file),
             ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors du changement de visibilité.',
-                'error' => $e->getMessage(),
-            ], 500);
-        }
     }
 
     /**
@@ -475,21 +437,13 @@ class FileController extends Controller
     {
         $this->authorize('lock', $file);
 
-        try {
-            $file = $this->storageService->lockFile($file, Auth::id());
+        $file = $this->storageService->lockFile($file, Auth::id());
 
             return response()->json([
                 'success' => true,
                 'message' => 'Fichier verrouillé avec succès.',
                 'data' => new FileResource($file),
             ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors du verrouillage.',
-                'error' => $e->getMessage(),
-            ], 500);
-        }
     }
 
     /**
@@ -526,21 +480,13 @@ class FileController extends Controller
     {
         $this->authorize('lock', $file);
 
-        try {
-            $file = $this->storageService->unlockFile($file, Auth::id());
+        $file = $this->storageService->unlockFile($file, Auth::id());
 
             return response()->json([
                 'success' => true,
                 'message' => 'Fichier déverrouillé avec succès.',
                 'data' => new FileResource($file),
             ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors du déverrouillage.',
-                'error' => $e->getMessage(),
-            ], 500);
-        }
     }
 
     /**

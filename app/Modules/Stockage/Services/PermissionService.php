@@ -133,7 +133,11 @@ class PermissionService
         return DB::transaction(function () use ($file, $roleId, $permissionType, $grantedBy, $expiresAt) {
             // Vérifier que le rôle existe
             if (!Role::find($roleId)) {
-                throw new \InvalidArgumentException("Le rôle #{$roleId} n'existe pas");
+                throw new \App\Exceptions\BusinessException(
+                   message: "Le rôle #{$roleId} n'existe pas",
+                   errorCode: 'ROLE_NOT_FOUND',
+                   statusCode: 404
+               );
             }
 
             // Créer ou mettre à jour la permission

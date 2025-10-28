@@ -126,7 +126,6 @@ class AuthService
             'password' => Hash::make($newPassword),
         ]);
 
-        // Révoquer tous les tokens sauf le token actuel
         $user->tokens()->where('id', '!=', $user->currentAccessToken()->id)->delete();
 
         Log::info('Mot de passe changé', [

@@ -7,12 +7,15 @@ use App\Modules\Inscription\Services\AcademicYearService;
 use App\Modules\Inscription\Services\EntryDiplomaService;
 use App\Modules\Inscription\Http\Resources\AcademicYearResource;
 use Illuminate\Http\JsonResponse;
+use App\Traits\ApiResponse;
 
 /**
  * Controller public pour les données de référence nécessaires aux candidatures
  */
 class PublicReferenceController extends Controller
 {
+    use ApiResponse;
+
     public function __construct(
         protected AcademicYearService $academicYearService,
         protected EntryDiplomaService $diplomaService
@@ -37,10 +40,7 @@ class PublicReferenceController extends Controller
             ];
         });
 
-        return response()->json([
-            'success' => true,
-            'data' => $data,
-        ]);
+        return $this->successResponse($data, 'Années académiques récupérées avec succès');
     }
 
     /**
@@ -49,14 +49,8 @@ class PublicReferenceController extends Controller
      */
     public function academicYearsForDepartment(int $departmentId): JsonResponse
     {
-        $now = now();
-        
-        // Récupérer les années académiques qui ont des périodes de soumission actives pour ce département
-        $years = \App\Modules\Inscription\Models\AcademicYear::whereHas('submissionPeriods', function ($query) use ($departmentId, $now) {
-            $query->where('department_id', $departmentId)
-                  ->where('start_date', '<=', $now)
-                  ->where('end_date', '>=', $now);
-        })->get();
+        // Déléguer au service
+        $years = $this->academicYearService->getYearsForDepartment($departmentId);
 
         $data = $years->map(function($year) {
             return [
@@ -69,10 +63,7 @@ class PublicReferenceController extends Controller
             ];
         });
 
-        return response()->json([
-            'success' => true,
-            'data' => $data,
-        ]);
+        return $this->successResponse($data, 'Années académiques du département récupérées avec succès');
     }
 
     /**
@@ -82,9 +73,7 @@ class PublicReferenceController extends Controller
     {
         $diplomas = $this->diplomaService->getAllDiplomas();
 
-        return response()->json([
-            'success' => true,
-            'data' => $diplomas
-        ]);
+        return $this->successResponse($diplomas
+        , 'Données récupérées avec succès');
     }
 }

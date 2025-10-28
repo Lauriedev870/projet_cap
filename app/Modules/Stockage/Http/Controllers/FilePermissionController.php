@@ -10,6 +10,7 @@ use App\Modules\Stockage\Http\Resources\FilePermissionResource;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use App\Traits\ApiResponse;
 
 /**
  * @OA\Tag(
@@ -17,9 +18,10 @@ use Illuminate\Support\Facades\Auth;
  *     description="Gestion des permissions sur les fichiers"
  * )
  */
-
 class FilePermissionController extends Controller
 {
+    use ApiResponse;
+
     public function __construct(
         protected PermissionService $permissionService
     ) {
@@ -111,8 +113,7 @@ class FilePermissionController extends Controller
     {
         $this->authorize('managePermissions', $file);
 
-        try {
-            $expiresAt = $request->input('expires_at') 
+        $expiresAt = $request->input('expires_at') 
                 ? new \DateTime($request->input('expires_at'))
                 : null;
 
@@ -139,13 +140,6 @@ class FilePermissionController extends Controller
                 'message' => 'Permission accordée avec succès.',
                 'data' => new FilePermissionResource($permission),
             ], 201);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors de l\'attribution de la permission.',
-                'error' => $e->getMessage(),
-            ], 500);
-        }
     }
 
     /**
@@ -197,8 +191,7 @@ class FilePermissionController extends Controller
             'permission_type' => 'required|in:read,write,delete,share,admin',
         ]);
 
-        try {
-            if ($request->input('user_id')) {
+        if ($request->input('user_id')) {
                 $success = $this->permissionService->revokeUserPermission(
                     $file,
                     $request->input('user_id'),
@@ -225,13 +218,6 @@ class FilePermissionController extends Controller
                 'success' => false,
                 'message' => 'Permission non trouvée.',
             ], 404);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors de la révocation de la permission.',
-                'error' => $e->getMessage(),
-            ], 500);
-        }
     }
 
     /**

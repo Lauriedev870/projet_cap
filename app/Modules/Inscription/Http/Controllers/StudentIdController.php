@@ -3,11 +3,11 @@
 namespace App\Modules\Inscription\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Models\Student;
-use App\Modules\Inscription\Models\PersonalInformation;
+use App\Modules\Inscription\Http\Requests\LookupStudentIdRequest;
+use App\Modules\Inscription\Http\Requests\AssignStudentIdRequest;
+use App\Modules\Inscription\Services\StudentIdService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
+use App\Traits\ApiResponse;
 
 /**
  * @OA\Tag(
@@ -17,6 +17,12 @@ use Illuminate\Support\Facades\Hash;
  */
 class StudentIdController extends Controller
 {
+    use ApiResponse;
+
+    public function __construct(
+        protected StudentIdService $studentIdService
+    ) {}
+
     /**
      * @OA\Post(
      *   path="/api/students/lookup-id",
@@ -35,38 +41,14 @@ class StudentIdController extends Controller
      *   @OA\Response(response=404, description="Introuvable")
      * )
      */
-    public function lookup(Request $request): JsonResponse
+    public function lookup(LookupStudentIdRequest $request): JsonResponse
     {
-        $data = $request->validate([
-            'last_name' => ['required','string'],
-            'first_names' => ['required','string'],
-            'birth_date' => ['required','date'],
-            'birth_place' => ['required','string'],
-        ]);
-
-        $pi = PersonalInformation::query()
-            ->whereRaw('LOWER(last_name) = ?', [mb_strtolower($data['last_name'])])
-            ->whereRaw('LOWER(first_names) = ?', [mb_strtolower($data['first_names'])])
-            ->whereDate('birth_date', $data['birth_date'])
-            ->whereRaw('LOWER(birth_place) = ?', [mb_strtolower($data['birth_place'])])
-            ->first();
-
-        if (!$pi) {
-            return response()->json(['message' => 'Identité introuvable'], 404);
-        }
-
-        // Le matricule est égal au numéro de téléphone enregistré pour l'étudiant
-        $phone = is_array($pi->contacts ?? null) ? ($pi->contacts[0] ?? null) : ($pi->phone ?? null);
-        if (!$phone) {
-            return response()->json(['message' => 'Aucun numéro de téléphone associé à cette identité'], 404);
-        }
-
-        $student = Student::where('student_id_number', $phone)->first();
-        if (!$student) {
-            return response()->json(['message' => 'Matricule non défini pour cette identité'], 404);
-        }
-
-        return response()->json(['student_id_number' => $student->student_id_number]);
+        $studentIdNumber = $this->studentIdService->lookupStudentId($request->validated());
+        
+        return $this->successResponse(
+            ['student_id_number' => $studentIdNumber],
+            'Matricule récupéré avec succès'
+        );
     }
 
     /**
@@ -89,38 +71,13 @@ class StudentIdController extends Controller
      *   @OA\Response(response=409, description="Matricule déjà défini")
      * )
      */
-    public function assign(Request $request): JsonResponse
+    public function assign(AssignStudentIdRequest $request): JsonResponse
     {
-        $data = $request->validate([
-            'last_name' => ['required','string'],
-            'first_names' => ['required','string'],
-            'birth_date' => ['required','date'],
-            'birth_place' => ['required','string'],
-            'phone' => ['required','string']
-        ]);
-
-        $pi = PersonalInformation::query()
-            ->whereRaw('LOWER(last_name) = ?', [mb_strtolower($data['last_name'])])
-            ->whereRaw('LOWER(first_names) = ?', [mb_strtolower($data['first_names'])])
-            ->whereDate('birth_date', $data['birth_date'])
-            ->whereRaw('LOWER(birth_place) = ?', [mb_strtolower($data['birth_place'])])
-            ->first();
-
-        if (!$pi) {
-            return response()->json(['message' => 'Identité introuvable'], 404);
-        }
-
-        // Empêcher réutilisation d'un matricule existant
-        $already = Student::where('student_id_number', $data['phone'])->exists();
-        if ($already) {
-            return response()->json(['message' => 'Matricule déjà existant'], 409);
-        }
-
-        $student = Student::create([
-            'student_id_number' => $data['phone'],
-            'password' => Hash::make($data['phone']),
-        ]);
-
-        return response()->json(['student_id_number' => $student->student_id_number], 201);
+        $studentIdNumber = $this->studentIdService->assignStudentId($request->validated());
+        
+        return $this->createdResponse(
+            ['student_id_number' => $studentIdNumber],
+            'Matricule assigné avec succès'
+        );
     }
 }

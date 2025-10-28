@@ -6,7 +6,7 @@ use App\Modules\Stockage\Models\File;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use Exception;
+use App\Exceptions\ResourceNotFoundException;
 
 class DocumentService
 {
@@ -151,7 +151,7 @@ class DocumentService
     public function download(File $document): \Symfony\Component\HttpFoundation\StreamedResponse
     {
         if (!Storage::disk($document->disk)->exists($document->path)) {
-            throw new Exception('Fichier introuvable sur le disque');
+            throw new ResourceNotFoundException('Fichier sur le disque');
         }
 
         Log::info('Document téléchargé', [

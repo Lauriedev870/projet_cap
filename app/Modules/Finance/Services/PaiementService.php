@@ -5,9 +5,10 @@ namespace App\Modules\Finance\Services;
 use App\Modules\Finance\Models\Paiement;
 use App\Modules\Stockage\Services\FileStorageService;
 use App\Models\Student;
+use App\Modules\Inscription\Models\PersonalInformation;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Exception;
+use App\Exceptions\ResourceNotFoundException;
 
 class PaiementService
 {
@@ -16,9 +17,9 @@ class PaiementService
     ) {}
 
     /**
-     * Récupérer tous les paiements avec filtres
+     * Récupérer tous les paiements avec filtres et pagination
      */
-    public function getAll(array $filters = [], int $perPage = 15)
+    public function getAll(array $filters, int $perPage = 15)
     {
         $query = Paiement::query()->with(['student', 'quittanceFile']);
 
@@ -60,6 +61,63 @@ class PaiementService
     }
 
     /**
+     * Récupérer un paiement par sa référence
+     */
+    public function getByReference(string $reference): ?Paiement
+    {
+        return Paiement::where('reference', $reference)->first();
+    }
+
+    /**
+     * Récupérer les informations d'un étudiant par matricule
+     */
+    public function getStudentInfo(string $matricule): array
+    {
+        $student = Student::where('student_id_number', $matricule)->first();
+        
+        if (!$student) {
+            throw new ResourceNotFoundException('Étudiant');
+        }
+
+        // Chercher les informations personnelles
+        $personalInfo = PersonalInformation::where(function($query) use ($matricule) {
+            $query->whereJsonContains('contacts', $matricule)
+                  ->orWhereJsonContains('contacts', [$matricule]);
+        })->first();
+
+        // Récupérer les filières/départements
+        $filieres = DB::table('student_department')
+            ->join('departments', 'student_department.department_id', '=', 'departments.id')
+            ->where('student_department.student_id', $student->id)
+            ->select('departments.id', 'departments.name as nom')
+            ->get()
+            ->toArray();
+
+        // Récupérer le diplôme
+        $diplome = null;
+        if ($personalInfo && isset($personalInfo->entry_diploma_id)) {
+            $diplome = DB::table('entry_diplomas')
+                ->where('id', $personalInfo->entry_diploma_id)
+                ->select('id', 'name as nom')
+                ->first();
+        }
+
+        return [
+            'id' => $student->id,
+            'student_id_number' => $student->student_id_number,
+            'nom' => $personalInfo->last_name ?? null,
+            'prenoms' => $personalInfo->first_names ?? null,
+            'email' => $personalInfo->email ?? null,
+            'tel' => is_array($personalInfo->contacts ?? null) ? ($personalInfo->contacts[0] ?? null) : $matricule,
+            'diplome' => $diplome ? [
+                'id' => $diplome->id,
+                'nom' => $diplome->nom
+            ] : null,
+            'filieres' => $filieres,
+        ];
+    }
+
+    /**
      * Créer un nouveau paiement
      */
     public function create(array $data, $quittanceFile): Paiement
@@ -71,7 +129,7 @@ class PaiementService
             // Vérifier que l'étudiant existe
             $student = Student::where('student_id_number', $data['matricule'])->first();
             if (!$student) {
-                throw new Exception("Étudiant non trouvé avec le matricule: {$data['matricule']}");
+                throw new ResourceNotFoundException("Étudiant avec le matricule {$data['matricule']}");
             }
 
             // Upload de la quittance

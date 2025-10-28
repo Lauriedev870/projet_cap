@@ -45,6 +45,22 @@ class AdministrationService
     }
 
     /**
+     * Récupérer les membres du soutien informatique
+     */
+    public function getSoutienInformatique(): \Illuminate\Support\Collection
+    {
+        return User::whereHas('roles', function ($query) {
+            $query->where('name', 'soutien_informatique');
+        })
+        ->with(['roles' => function ($query) {
+            $query->select('roles.id', 'roles.name', 'roles.display_name');
+        }])
+        ->select('id', 'first_name', 'last_name', 'email', 'phone', 'photo')
+        ->orderBy('last_name')
+        ->get();
+    }
+
+    /**
      * Récupérer les statistiques du tableau de bord
      */
     public function getDashboardStats(): array
@@ -81,7 +97,6 @@ class AdministrationService
     {
         $activities = [];
 
-        // Derniers utilisateurs créés
         $recentUsers = User::orderBy('created_at', 'desc')
             ->limit(5)
             ->get(['id', 'first_name', 'last_name', 'email', 'created_at'])
@@ -92,7 +107,6 @@ class AdministrationService
                 'data' => $user,
             ]);
 
-        // Derniers étudiants en attente
         $recentPending = PendingStudent::orderBy('created_at', 'desc')
             ->limit(5)
             ->get(['id', 'first_name', 'last_name', 'email', 'status', 'created_at'])
@@ -103,7 +117,6 @@ class AdministrationService
                 'data' => $student,
             ]);
 
-        // Derniers paiements
         $recentPayments = Paiement::orderBy('created_at', 'desc')
             ->limit(5)
             ->get(['id', 'matricule', 'montant', 'statut', 'created_at'])
@@ -114,7 +127,6 @@ class AdministrationService
                 'data' => $payment,
             ]);
 
-        // Combiner et trier par timestamp
         $activities = collect()
             ->merge($recentUsers)
             ->merge($recentPending)
@@ -139,7 +151,6 @@ class AdministrationService
         ];
 
         try {
-            // Test database
             DB::connection()->getPdo();
         } catch (\Exception $e) {
             $health['database'] = 'error';
@@ -147,7 +158,6 @@ class AdministrationService
         }
 
         try {
-            // Test storage
             if (!is_writable(storage_path('app'))) {
                 $health['storage'] = 'warning';
                 $health['errors'][] = 'Storage directory not writable';

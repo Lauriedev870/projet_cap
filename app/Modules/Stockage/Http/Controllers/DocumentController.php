@@ -7,6 +7,7 @@ use App\Modules\Stockage\Models\File;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use App\Traits\ApiResponse;
 
 /**
  * @OA\Tag(
@@ -16,6 +17,8 @@ use Illuminate\Support\Facades\Storage;
  */
 class DocumentController extends Controller
 {
+    use ApiResponse;
+
     /**
      * @OA\Get(
      *     path="/api/documents",
@@ -72,7 +75,7 @@ class DocumentController extends Controller
             ];
         });
 
-        return response()->json(['success' => true, 'data' => $documents]);
+        return $this->successResponse($documents, 'Données récupérées avec succès');
     }
 
     /**

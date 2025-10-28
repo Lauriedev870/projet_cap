@@ -15,6 +15,8 @@ use App\Modules\Stockage\Http\Controllers\DocumentController;
 |
 */
 
+Route::prefix('api/stockage')->group(function () {
+
 // Routes publiques (fichiers publics et partages)
 Route::prefix('files')->group(function () {
     // Fichiers publics
@@ -75,3 +77,5 @@ Route::prefix('documents')->group(function () {
         Route::delete('{document}', [DocumentController::class, 'destroy'])->name('api.documents.destroy');
     });
 });
+
+}); // Fin du groupe api/stockage

@@ -6,7 +6,6 @@ use App\Modules\Finance\Http\Controllers\PaiementController;
 
 // Routes for Finance module
 
-// Routes publiques pour les paiements (non protégées par authentification)
 Route::prefix('api/finance')->group(function () {
     // Liste des paiements avec recherche et filtres
     Route::get('/paiements', [PaiementController::class, 'index']);

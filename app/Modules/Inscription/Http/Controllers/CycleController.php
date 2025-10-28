@@ -3,12 +3,10 @@
 namespace App\Modules\Inscription\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Modules\Inscription\Models\Cycle;
-use App\Modules\Inscription\Models\Department;
-use App\Modules\Inscription\Models\SubmissionPeriod;
+use App\Modules\Inscription\Services\CycleService;
 use App\Modules\Inscription\Http\Resources\CycleResource;
+use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Carbon;
 
 /**
  * @OA\Tag(
@@ -18,6 +16,11 @@ use Illuminate\Support\Carbon;
  */
 class CycleController extends Controller
 {
+    use ApiResponse;
+
+    public function __construct(
+        protected CycleService $cycleService
+    ) {}
     /**
      * @OA\Get(
      *     path="/api/cycles",
@@ -37,12 +40,11 @@ class CycleController extends Controller
      */
     public function index(): JsonResponse
     {
-        $cycles = Cycle::with('departments')->get();
-
-        return response()->json([
-            'success' => true,
-            'data' => CycleResource::collection($cycles),
-        ]);
+        $cycles = $this->cycleService->getAllWithDepartments();
+        return $this->successResponse(
+            CycleResource::collection($cycles),
+            'Cycles récupérés avec succès'
+        );
     }
 
     /**
@@ -72,58 +74,11 @@ class CycleController extends Controller
      */
     public function allDepartmentsWithPeriods(): JsonResponse
     {
-        $departments = Department::with(['cycle', 'submissionPeriod'])->get();
-        $today = Carbon::today();
-
-        $filieres = $departments->map(function ($dept) use ($today) {
-            $cycleName = strtolower($dept->cycle->name ?? '');
-            if ($cycleName === 'ingénieur') {
-                $cycleName = 'ingenierie';
-            }
-
-            // Trouver la période active ou la plus proche
-            $activePeriod = null;
-            $badge = null;
-            $dateLimite = null;
-
-            foreach ($dept->submissionPeriod as $p) {
-                $start = Carbon::parse($p->start_date);
-                $end = Carbon::parse($p->end_date);
-
-                // Période en cours
-                if ($today->between($start, $end)) {
-                    $activePeriod = $p;
-                    $badge = 'inscriptions-ouvertes';
-                    $dateLimite = $end->format('Y-m-d');
-                    break;
-                }
-                // Période future
-                if ($start->gt($today)) {
-                    if (!$activePeriod) {
-                        $activePeriod = $p;
-                        $badge = 'prochainement';
-                        $dateLimite = $end->format('Y-m-d');
-                    }
-                }
-            }
-
-            // Si aucune période active/future, c'est fermé
-            if (!$badge) {
-                $badge = 'inscriptions-fermees';
-            }
-
-            return [
-                'id' => $dept->id,
-                'title' => $dept->name,
-                'abbreviation' => $dept->abbreviation ?? '',
-                'cycle' => $cycleName,
-                'dateLimite' => $dateLimite,
-                'image' => '', // À compléter selon votre logique (URL ou path)
-                'badge' => $badge,
-            ];
-        });
-
-        return response()->json(['success' => true, 'data' => $filieres->values()]);
+        $filieres = $this->cycleService->getAllDepartmentsWithPeriods();
+        return $this->successResponse(
+            $filieres,
+            'Départements récupérés avec succès'
+        );
     }
 
     /**
@@ -156,59 +111,10 @@ class CycleController extends Controller
      */
     public function nextDeadline(): JsonResponse
     {
-        $today = Carbon::now();
-
-        // Récupérer toutes les périodes actives (end_date >= aujourd'hui)
-        $activePeriods = SubmissionPeriod::with(['department.cycle'])
-            ->where('end_date', '>=', $today)
-            ->orderBy('end_date', 'asc')
-            ->get();
-
-        if ($activePeriods->isEmpty()) {
-            return response()->json([
-                'success' => true,
-                'data' => [
-                    'status' => 'closed',
-                    'periods' => []
-                ]
-            ]);
-        }
-
-        // Grouper par date de fin
-        $groupedByDeadline = $activePeriods->groupBy(function ($period) {
-            return Carbon::parse($period->end_date)->format('Y-m-d');
-        });
-
-        // Formater les données
-        $periods = $groupedByDeadline->map(function ($periodsGroup, $dateKey) {
-            $deadline = Carbon::parse($dateKey)->endOfDay();
-            
-            $filieres = $periodsGroup->map(function ($period) {
-                $cycleName = strtolower($period->department->cycle->name ?? '');
-                if ($cycleName === 'ingénieur') {
-                    $cycleName = 'ingenierie';
-                }
-
-                return [
-                    'id' => $period->department->id,
-                    'name' => $period->department->name,
-                    'abbreviation' => $period->department->abbreviation ?? '',
-                    'cycle' => $cycleName,
-                ];
-            })->values();
-
-            return [
-                'deadline' => $deadline->toIso8601String(),
-                'filieres' => $filieres,
-            ];
-        })->values();
-
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'status' => 'open',
-                'periods' => $periods,
-            ]
-        ]);
+        $data = $this->cycleService->getNextDeadline();
+        return $this->successResponse(
+            $data,
+            'Deadlines récupérés avec succès'
+        );
     }
 }

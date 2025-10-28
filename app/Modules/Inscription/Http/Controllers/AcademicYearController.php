@@ -5,10 +5,13 @@ namespace App\Modules\Inscription\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Modules\Inscription\Models\AcademicYear;
 use App\Modules\Inscription\Services\AcademicYearService;
+use App\Modules\Inscription\Http\Requests\StoreAcademicYearRequest;
+use App\Modules\Inscription\Http\Requests\UpdateAcademicYearRequest;
+use App\Modules\Inscription\Http\Requests\ManagePeriodsRequest;
+use App\Modules\Inscription\Http\Requests\ExtendPeriodsRequest;
+use App\Modules\Inscription\Http\Resources\AcademicYearResource;
+use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
-use Exception;
 
 /**
  * @OA\Tag(
@@ -18,9 +21,37 @@ use Exception;
  */
 class AcademicYearController extends Controller
 {
+    use ApiResponse;
+
     public function __construct(
         protected AcademicYearService $academicYearService
-    ) {}
+    ) {
+        $this->middleware('auth:sanctum')->except(['index', 'show']);
+    }
+
+    /**
+     * Liste des années académiques
+     */
+    public function index(): JsonResponse
+    {
+        $academicYears = $this->academicYearService->getAllYears();
+        return $this->successResponse(
+            AcademicYearResource::collection($academicYears),
+            'Années académiques récupérées avec succès'
+        );
+    }
+
+    /**
+     * Détails d'une année académique
+     */
+    public function show(AcademicYear $academicYear): JsonResponse
+    {
+        return $this->successResponse(
+            new AcademicYearResource($academicYear->load(['submissionPeriods', 'reclamationPeriods'])),
+            'Année académique récupérée avec succès'
+        );
+    }
+
     /**
      * @OA\Post(
      *     path="/api/academic-years",
@@ -42,28 +73,10 @@ class AcademicYearController extends Controller
      *     @OA\Response(response=422, description="Données invalides")
      * )
      */
-    public function store(Request $request): JsonResponse
+    public function store(StoreAcademicYearRequest $request): JsonResponse
     {
-        try {
-            $data = $request->validate([
-                'year_start' => ['required','date'],
-                'year_end' => ['required','date','after:year_start'],
-                'submission_start' => ['required','date','after_or_equal:year_start'],
-                'submission_end' => ['required','date','after:submission_start','before:year_end'],
-                'departments' => ['sometimes','array','min:1'],
-                'departments.*' => ['integer','exists:departments,id'],
-            ]);
-
-            $year = $this->academicYearService->create($data);
-
-            return response()->json(['success' => true, 'data' => $year], 201);
-        } catch (Exception $e) {
-            Log::error('Erreur création année académique', ['error' => $e->getMessage()]);
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage(),
-            ], $e->getMessage() === "L'année académique existe déjà." ? 422 : 500);
-        }
+        $year = $this->academicYearService->create($request->validated());
+        return $this->createdResponse($year, 'Année académique créée avec succès');
     }
 
     /**
@@ -85,40 +98,10 @@ class AcademicYearController extends Controller
      *     @OA\Response(response=200, description="Mis à jour")
      * )
      */
-    public function update(Request $request, AcademicYear $academicYear): JsonResponse
+    public function update(UpdateAcademicYearRequest $request, AcademicYear $academicYear): JsonResponse
     {
-        $data = $request->validate([
-            'year_start' => ['sometimes','date'],
-            'year_end' => ['sometimes','date','after:year_start'],
-            'submission_start' => ['sometimes','date'],
-            'submission_end' => ['sometimes','date','after:submission_start'],
-            'departments' => ['sometimes','array','min:1'],
-            'departments.*' => ['integer','exists:departments,id'],
-        ]);
-
-        if (array_key_exists('year_start', $data)) { $academicYear->year_start = $data['year_start']; }
-        if (array_key_exists('year_end', $data)) { $academicYear->year_end = $data['year_end']; }
-        if (array_key_exists('submission_start', $data)) { $academicYear->submission_start = $data['submission_start']; }
-        if (array_key_exists('submission_end', $data)) { $academicYear->submission_end = $data['submission_end']; }
-        $academicYear->save();
-
-        if (!empty($data['departments'])) {
-            foreach ($data['departments'] as $departmentId) {
-                $exists = SubmissionPeriod::where('academic_year_id', $academicYear->id)
-                    ->where('department_id', $departmentId)
-                    ->exists();
-                if (!$exists) {
-                    SubmissionPeriod::create([
-                        'academic_year_id' => $academicYear->id,
-                        'department_id' => $departmentId,
-                        'start_date' => $academicYear->submission_start,
-                        'end_date' => $academicYear->submission_end,
-                    ]);
-                }
-            }
-        }
-
-        return response()->json(['success' => true, 'data' => $academicYear->fresh()]);
+        $updated = $this->academicYearService->update($academicYear, $request->validated());
+        return $this->updatedResponse($updated, 'Année académique mise à jour avec succès');
     }
 
     /**
@@ -133,8 +116,8 @@ class AcademicYearController extends Controller
      */
     public function destroy(AcademicYear $academicYear): JsonResponse
     {
-        $academicYear->delete();
-        return response()->json(['success' => true]);
+        $this->academicYearService->delete($academicYear);
+        return $this->deletedResponse('Année académique supprimée avec succès');
     }
 
     /**
@@ -155,40 +138,10 @@ class AcademicYearController extends Controller
      *     @OA\Response(response=201, description="Créées")
      * )
      */
-    public function addPeriods(Request $request, AcademicYear $academicYear): JsonResponse
+    public function addPeriods(ManagePeriodsRequest $request, AcademicYear $academicYear): JsonResponse
     {
-        $data = $request->validate([
-            'start_date' => ['required','date','after_or_equal:'.$academicYear->year_start],
-            'end_date' => ['required','date','after:start_date','before_or_equal:'.$academicYear->year_end],
-            'departments' => ['required','array','min:1'],
-            'departments.*' => ['integer','exists:departments,id'],
-        ]);
-
-        foreach ($data['departments'] as $departmentId) {
-            $overlap = SubmissionPeriod::where('department_id', $departmentId)
-                ->where('academic_year_id', $academicYear->id)
-                ->where(function ($q) use ($data) {
-                    $q->whereBetween('start_date', [$data['start_date'], $data['end_date']])
-                      ->orWhereBetween('end_date', [$data['start_date'], $data['end_date']])
-                      ->orWhere(function ($qq) use ($data) {
-                          $qq->where('start_date', '<=', $data['start_date'])
-                             ->where('end_date', '>=', $data['end_date']);
-                      });
-                })
-                ->exists();
-            if ($overlap) {
-                return response()->json(['message' => "Le département $departmentId a déjà une période qui chevauche."], 422);
-            }
-
-            SubmissionPeriod::create([
-                'academic_year_id' => $academicYear->id,
-                'department_id' => $departmentId,
-                'start_date' => $data['start_date'],
-                'end_date' => $data['end_date'],
-            ]);
-        }
-
-        return response()->json(['success' => true], 201);
+        $this->academicYearService->addPeriods($academicYear, $request->validated());
+        return $this->createdResponse(null, 'Périodes ajoutées avec succès');
     }
 
     /**
@@ -210,23 +163,10 @@ class AcademicYearController extends Controller
      *     @OA\Response(response=200, description="Mises à jour")
      * )
      */
-    public function extendPeriods(Request $request, AcademicYear $academicYear): JsonResponse
+    public function extendPeriods(ExtendPeriodsRequest $request, AcademicYear $academicYear): JsonResponse
     {
-        $data = $request->validate([
-            'start_date' => ['required','date'],
-            'old_end_date' => ['required','date','after:start_date'],
-            'new_end_date' => ['required','date','after:old_end_date','before_or_equal:'.$academicYear->year_end],
-            'departments' => ['required','array','min:1'],
-            'departments.*' => ['integer','exists:departments,id'],
-        ]);
-
-        SubmissionPeriod::where('academic_year_id', $academicYear->id)
-            ->where('start_date', $data['start_date'])
-            ->where('end_date', $data['old_end_date'])
-            ->whereIn('department_id', $data['departments'])
-            ->update(['end_date' => $data['new_end_date']]);
-
-        return response()->json(['success' => true]);
+        $updated = $this->academicYearService->extendPeriods($academicYear, $request->validated());
+        return $this->updatedResponse(['updated_count' => $updated], 'Périodes étendues avec succès');
     }
 
     /**
@@ -247,21 +187,9 @@ class AcademicYearController extends Controller
      *     @OA\Response(response=200, description="Supprimées")
      * )
      */
-    public function deletePeriods(Request $request, AcademicYear $academicYear): JsonResponse
+    public function deletePeriods(ManagePeriodsRequest $request, AcademicYear $academicYear): JsonResponse
     {
-        $data = $request->validate([
-            'start_date' => ['required','date'],
-            'end_date' => ['required','date','after:start_date'],
-            'departments' => ['required','array','min:1'],
-            'departments.*' => ['integer','exists:departments,id'],
-        ]);
-
-        SubmissionPeriod::where('academic_year_id', $academicYear->id)
-            ->where('start_date', $data['start_date'])
-            ->where('end_date', $data['end_date'])
-            ->whereIn('department_id', $data['departments'])
-            ->delete();
-
-        return response()->json(['success' => true]);
+        $deleted = $this->academicYearService->deletePeriods($academicYear, $request->validated());
+        return $this->deletedResponse("Périodes supprimées avec succès ({$deleted} période(s))");
     }
 }

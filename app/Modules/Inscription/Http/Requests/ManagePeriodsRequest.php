@@ -1,0 +1,49 @@
+<?php
+
+namespace App\Modules\Inscription\Http\Requests;
+
+use Illuminate\Foundation\Http\FormRequest;
+
+class ManagePeriodsRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return true;
+    }
+
+    public function rules(): array
+    {
+        $academicYear = $this->route('academicYear');
+        
+        $rules = [
+            'start_date' => ['required', 'date'],
+            'end_date' => ['required', 'date', 'after:start_date'],
+            'departments' => ['required', 'array', 'min:1'],
+            'departments.*' => ['integer', 'exists:departments,id'],
+        ];
+
+        // Pour la création de périodes, valider par rapport à l'année académique
+        if ($this->isMethod('post') && $academicYear) {
+            $rules['start_date'][] = 'after_or_equal:' . $academicYear->year_start;
+            $rules['end_date'][] = 'before_or_equal:' . $academicYear->year_end;
+        }
+
+        return $rules;
+    }
+
+    public function messages(): array
+    {
+        return [
+            'start_date.required' => 'La date de début est requise',
+            'start_date.after_or_equal' => 'La date de début doit être dans la période de l\'année académique',
+            'end_date.required' => 'La date de fin est requise',
+            'end_date.after' => 'La date de fin doit être après la date de début',
+            'end_date.before_or_equal' => 'La date de fin doit être dans la période de l\'année académique',
+            'departments.required' => 'Au moins un département est requis',
+            'departments.array' => 'Les départements doivent être un tableau',
+            'departments.min' => 'Au moins un département est requis',
+            'departments.*.integer' => 'Chaque département doit être un ID valide',
+            'departments.*.exists' => 'Le département spécifié n\'existe pas',
+        ];
+    }
+}

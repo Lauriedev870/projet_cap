@@ -3,11 +3,9 @@
 namespace App\Modules\Auth\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Models\User;
 use App\Modules\Auth\Services\AdministrationService;
+use App\Traits\ApiResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
-use Exception;
 
 /**
  * @OA\Tag(
@@ -17,6 +15,8 @@ use Exception;
  */
 class AdministrationController extends Controller
 {
+    use ApiResponse;
+
     public function __construct(
         protected AdministrationService $administrationService
     ) {}
@@ -48,20 +48,9 @@ class AdministrationController extends Controller
      */
     public function index(Request $request)
     {
-        try {
-            $filters = $request->only(['role', 'search']);
-            $users = $this->administrationService->getAdminUsers($filters);
-
-            return response()->json([
-                'success' => true,
-                'data' => $users
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'error' => 'Erreur lors de la récupération des utilisateurs administratifs',
-                'message' => $e->getMessage()
-            ], 500);
-        }
+        $filters = $request->only(['role', 'search']);
+        $users = $this->administrationService->getAdminUsers($filters);
+        return $this->successResponse($users, 'Utilisateurs administratifs récupérés avec succès');
     }
 
     /**
@@ -79,26 +68,7 @@ class AdministrationController extends Controller
      */
     public function soutienInformatique(Request $request)
     {
-        try {
-            $users = User::whereHas('roles', function ($query) {
-                $query->where('name', 'soutien_informatique');
-            })
-            ->with(['roles' => function ($query) {
-                $query->select('roles.id', 'roles.name', 'roles.display_name');
-            }])
-            ->select('id', 'first_name', 'last_name', 'email', 'phone', 'photo')
-            ->orderBy('last_name')
-            ->get();
-
-            return response()->json([
-                'success' => true,
-                'data' => $users
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'error' => 'Erreur lors de la récupération des membres du soutien informatique',
-                'message' => $e->getMessage()
-            ], 500);
-        }
+        $users = $this->administrationService->getSoutienInformatique();
+        return $this->successResponse($users, 'Membres du soutien informatique récupérés avec succès');
     }
 }

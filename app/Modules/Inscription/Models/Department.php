@@ -2,25 +2,16 @@
 
 namespace App\Modules\Inscription\Models;
 
+use App\Traits\HasUuid;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Department extends Model
 {
-    use HasFactory;
+    use HasFactory, HasUuid;
 
     protected $fillable = ['name', 'cycle_id', 'abbreviation', 'next_level_id'];
 
-    protected static function boot()
-    {
-        parent::boot();
-
-        static::creating(function ($model) {
-            if (empty($model->uuid)) {
-                $model->uuid = (string) \Illuminate\Support\Str::uuid();
-            }
-        });
-    }
     
     public function cycle()
     {

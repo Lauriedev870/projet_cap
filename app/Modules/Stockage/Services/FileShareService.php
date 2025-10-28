@@ -89,14 +89,22 @@ class FileShareService
     public function accessSharedFile(FileShare $share, ?string $password = null, bool $download = false): array
     {
         if (!$this->validateShareAccess($share, $password)) {
-            throw new \RuntimeException('Accès au partage refusé');
+            throw new \App\Exceptions\BusinessException(
+                message: 'Accès au partage refusé',
+                errorCode: 'SHARE_ACCESS_DENIED',
+                statusCode: 403
+            );
         }
 
         $file = $share->file;
 
         // Vérifier les permissions du partage
         if ($download && !$share->allow_download) {
-            throw new \RuntimeException('Le téléchargement n\'est pas autorisé pour ce partage');
+            throw new \App\Exceptions\BusinessException(
+                message: 'Le téléchargement n\'est pas autorisé pour ce partage',
+                errorCode: 'DOWNLOAD_NOT_ALLOWED',
+                statusCode: 403
+            );
         }
 
         // Incrémenter le compteur si c'est un téléchargement

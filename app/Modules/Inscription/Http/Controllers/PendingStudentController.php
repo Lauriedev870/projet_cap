@@ -5,12 +5,13 @@ namespace App\Modules\Inscription\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Modules\Inscription\Models\PendingStudent;
 use App\Modules\Inscription\Http\Requests\CreatePendingStudentRequest;
+use App\Modules\Inscription\Http\Requests\SubmitDocumentsRequest;
 use App\Modules\Inscription\Http\Resources\PendingStudentResource;
 use App\Modules\Inscription\Services\PendingStudentService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
-use Exception;
+use App\Traits\ApiResponse;
+use App\Traits\HasPagination;
 
 /**
  * @OA\Tag(
@@ -21,6 +22,8 @@ use Exception;
 
 class PendingStudentController extends Controller
 {
+    use ApiResponse, HasPagination;
+
     public function __construct(
         protected PendingStudentService $pendingStudentService
     ) {
@@ -70,26 +73,15 @@ class PendingStudentController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        try {
-            $filters = $request->only(['status', 'entry_level_id', 'search']);
-            $perPage = min(max((int) $request->input('per_page', 15), 1), 100);
-            
-            $pendingStudents = $this->pendingStudentService->getAll($filters, $perPage);
+        $filters = $request->only(['status', 'entry_level_id', 'search']);
+        $perPage = $this->getPerPage($request);
+        
+        $pendingStudents = $this->pendingStudentService->getAll($filters, $perPage);
 
-            return response()->json([
-                'success' => true,
-                'data' => PendingStudentResource::collection($pendingStudents),
-                'meta' => [
-                    'total' => $pendingStudents->total(),
-                    'per_page' => $pendingStudents->perPage(),
-                    'current_page' => $pendingStudents->currentPage(),
-                    'last_page' => $pendingStudents->lastPage(),
-                ],
-            ]);
-        } catch (Exception $e) {
-            Log::error('Erreur récupération étudiants en attente', ['error' => $e->getMessage()]);
-            return response()->json(['success' => false, 'message' => 'Erreur serveur.'], 500);
-        }
+        return $this->successPaginatedResponse(
+            $pendingStudents->setCollection(PendingStudentResource::collection($pendingStudents->items())),
+            'Étudiants en attente récupérés avec succès'
+        );
     }
 
     /**
@@ -126,22 +118,12 @@ class PendingStudentController extends Controller
      */
     public function store(CreatePendingStudentRequest $request): JsonResponse
     {
-        try {
-            $pendingStudent = $this->pendingStudentService->create($request->validated());
+        $pendingStudent = $this->pendingStudentService->create($request->validated());
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Étudiant en attente créé avec succès.',
-                'data' => new PendingStudentResource($pendingStudent),
-            ], 201);
-        } catch (Exception $e) {
-            Log::error('Erreur création étudiant en attente', ['error' => $e->getMessage()]);
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors de la création.',
-                'error' => config('app.debug') ? $e->getMessage() : null,
-            ], 500);
-        }
+        return $this->createdResponse(
+            new PendingStudentResource($pendingStudent),
+            'Étudiant en attente créé avec succès'
+        );
     }
 
     /**
@@ -173,10 +155,10 @@ class PendingStudentController extends Controller
      */
     public function show(PendingStudent $pendingStudent): JsonResponse
     {
-        return response()->json([
-            'success' => true,
-            'data' => new PendingStudentResource($pendingStudent->load(['entryLevel', 'entryDiploma', 'studentPendingStudents.student'])),
-        ]);
+        return $this->successResponse(
+            new PendingStudentResource($pendingStudent->load(['entryLevel', 'entryDiploma', 'studentPendingStudents.student'])),
+            'Étudiant en attente récupéré avec succès'
+        );
     }
 
     /**
@@ -222,22 +204,12 @@ class PendingStudentController extends Controller
      */
     public function update(CreatePendingStudentRequest $request, PendingStudent $pendingStudent): JsonResponse
     {
-        try {
-            $pendingStudent = $this->pendingStudentService->update($pendingStudent, $request->validated());
+        $pendingStudent = $this->pendingStudentService->update($pendingStudent, $request->validated());
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Étudiant en attente mis à jour avec succès.',
-                'data' => new PendingStudentResource($pendingStudent),
-            ]);
-        } catch (Exception $e) {
-            Log::error('Erreur mise à jour étudiant', ['error' => $e->getMessage()]);
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors de la mise à jour.',
-                'error' => config('app.debug') ? $e->getMessage() : null,
-            ], 500);
-        }
+        return $this->updatedResponse(
+            new PendingStudentResource($pendingStudent),
+            'Étudiant en attente mis à jour avec succès'
+        );
     }
 
     /**
@@ -270,20 +242,9 @@ class PendingStudentController extends Controller
      */
     public function destroy(PendingStudent $pendingStudent): JsonResponse
     {
-        try {
-            $this->pendingStudentService->delete($pendingStudent);
+        $this->pendingStudentService->delete($pendingStudent);
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Étudiant en attente supprimé avec succès.',
-            ]);
-        } catch (Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors de la suppression.',
-                'error' => config('app.debug') ? $e->getMessage() : null,
-            ], 500);
-        }
+        return $this->deletedResponse('Étudiant en attente supprimé avec succès');
     }
 
     /**
@@ -343,67 +304,16 @@ class PendingStudentController extends Controller
      *     @OA\Response(response=500, description="Erreur serveur")
      * )
      */
-    public function submitDocuments(Request $request, PendingStudent $pendingStudent): JsonResponse
+    public function submitDocuments(SubmitDocumentsRequest $request, PendingStudent $pendingStudent): JsonResponse
     {
-        $request->validate([
-            'documents' => 'required|array',
-            'documents.*' => 'required|file|max:51200', // 50MB max par fichier
-            'document_types' => 'required|array',
-            'document_types.*' => 'required|string',
-        ]);
+        $result = $this->pendingStudentService->submitDocuments(
+            $pendingStudent,
+            $request->file('documents'),
+            $request->document_types,
+            auth()->id()
+        );
 
-        try {
-            $uploadedFiles = [];
-
-            DB::transaction(function () use ($request, $pendingStudent, &$uploadedFiles) {
-                foreach ($request->file('documents') as $index => $file) {
-                    $documentType = $request->document_types[$index] ?? 'unknown';
-
-                    $uploadedFile = $this->fileStorageService->uploadFile(
-                        $file,
-                        auth()->id() ?? null, // Peut être null si non authentifié
-                        'private',
-                        'inscription_documents',
-                        'inscription',
-                        'pending_student',
-                        $pendingStudent->id,
-                        [
-                            'document_type' => $documentType,
-                            'submitted_by' => auth()->id() ?? null,
-                        ]
-                    );
-
-                    $uploadedFiles[] = $uploadedFile;
-                }
-
-                // Mettre à jour le statut si nécessaire
-                if ($pendingStudent->status === 'pending') {
-                    $pendingStudent->update(['status' => 'documents_submitted']);
-                }
-            });
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Documents soumis avec succès.',
-                'data' => [
-                    'pending_student' => new PendingStudentResource($pendingStudent->fresh()),
-                    'uploaded_files' => collect($uploadedFiles)->map(function ($file) {
-                        return [
-                            'id' => $file->id,
-                            'original_name' => $file->original_name,
-                            'size' => $file->size,
-                            'mime_type' => $file->mime_type,
-                        ];
-                    }),
-                ],
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors de la soumission des documents.',
-                'error' => $e->getMessage(),
-            ], 500);
-        }
+        return $this->successResponse($result, 'Documents soumis avec succès');
     }
 
     /**
@@ -437,24 +347,15 @@ class PendingStudentController extends Controller
     {
         // Vérifier que l'utilisateur est authentifié pour récupérer les documents
         if (!auth()->check()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Authentification requise pour récupérer les documents.',
-            ], 401);
+            return $this->errorResponse(
+                'Authentification requise pour récupérer les documents',
+                'AUTH_REQUIRED',
+                401
+            );
         }
 
-        $files = $this->fileStorageService->getUserFiles(
-            auth()->id(),
-            [
-                'module_name' => 'inscription',
-                'module_resource_type' => 'pending_student',
-                'module_resource_id' => $pendingStudent->id,
-            ]
-        );
+        $files = $this->pendingStudentService->getDocuments($pendingStudent, auth()->id());
 
-        return response()->json([
-            'success' => true,
-            'data' => $files,
-        ]);
+        return $this->successResponse($files, 'Documents récupérés avec succès');
     }
 }

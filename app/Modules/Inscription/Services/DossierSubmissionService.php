@@ -10,6 +10,9 @@ use App\Modules\Inscription\Models\PendingStudent;
 use App\Modules\Inscription\Models\PersonalInformation;
 use App\Modules\Inscription\Models\StudentPendingStudent;
 use App\Modules\Inscription\Models\SubmissionPeriod;
+use App\Exceptions\BusinessException;
+use App\Exceptions\ResourceNotFoundException;
+use App\Exceptions\FileUploadException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -29,18 +32,27 @@ class DossierSubmissionService
                 ->first();
 
             if (!$submissionPeriod) {
-                throw new \Exception('Pas de période de soumission active pour la filière sélectionnée et cette année académique.', 400);
+                throw new BusinessException(
+                    message: 'Pas de période de soumission active pour la filière sélectionnée et cette année académique',
+                    errorCode: 'SUBMISSION_PERIOD_CLOSED'
+                );
             }
 
             $department = Department::findOrFail($request->department_id);
             if ($department->cycle?->name !== $cycleName) {
-                throw new \Exception("La filière choisie ne fait pas partie du cycle {$cycleName}.", 400);
+                throw new BusinessException(
+                    message: "La filière choisie ne fait pas partie du cycle {$cycleName}",
+                    errorCode: 'INVALID_DEPARTMENT_CYCLE'
+                );
             }
 
             if ($request->has('entry_diploma_id')) {
                 $entryDiploma = EntryDiploma::findOrFail($request->entry_diploma_id);
                 if (!in_array($entryDiploma->name, $validDiplomas)) {
-                    throw new \Exception("Diplôme d'entrée invalide pour le cycle de {$cycleName}.", 400);
+                    throw new BusinessException(
+                        message: "Diplôme d'entrée invalide pour le cycle de {$cycleName}",
+                        errorCode: 'INVALID_ENTRY_DIPLOMA'
+                    );
                 }
             }
 
@@ -85,7 +97,10 @@ class DossierSubmissionService
                     $documents[$documentName] = $path;
                 } elseif (!in_array($field, ['attestation_depot_dossier', 'attestation_anglais', 'diplome_licence'])) {
                     $this->deleteFiles($documents);
-                    throw new \Exception("Tentative d'upload échouée {$documentName}.", 400);
+                    throw new FileUploadException(
+                        fileName: $documentName,
+                        reason: "Le fichier {$documentName} est invalide ou n'a pas pu être téléchargé"
+                    );
                 }
             }
 
@@ -137,7 +152,10 @@ class DossierSubmissionService
                 ->first();
 
             if (!$submissionPeriod) {
-                throw new \Exception('No active submission period for the selected department and academic year.', 400);
+                throw new BusinessException(
+                    message: 'Aucune période de soumission active pour le département sélectionné et cette année académique',
+                    errorCode: 'SUBMISSION_PERIOD_CLOSED'
+                );
             }
 
             $year = now()->year;
@@ -148,7 +166,10 @@ class DossierSubmissionService
             if (!is_array($files)) { $files = [$files]; }
             if (!is_array($names)) { $names = [$names]; }
             if (count($files) !== count($names)) {
-                throw new \Exception('Le nombre de fichiers ne correspond pas au nombre de noms.');
+                throw new BusinessException(
+                    message: 'Le nombre de fichiers ne correspond pas au nombre de noms',
+                    errorCode: 'FILES_NAMES_MISMATCH'
+                );
             }
 
             $documents = [];
@@ -158,7 +179,10 @@ class DossierSubmissionService
                     $path = $file->store("dossiers/$year/$cyclePath/{$name}", 'public');
                     $documents[$name . "(Complément)"] = $path;
                 } else {
-                    throw new \Exception('Le fichier ' . $file->getClientOriginalName() . ' est invalide.');
+                    throw new FileUploadException(
+                        fileName: $file->getClientOriginalName(),
+                        reason: 'Le fichier est invalide'
+                    );
                 }
             }
 
@@ -182,7 +206,7 @@ class DossierSubmissionService
         // Vérifications simplifiées pour compatibilité
         $student = \App\Models\User::where('student_id_number', $studentIdNumber)->first();
         if (!$student) {
-            throw new \Exception('Etudiant non retrouvé.', 400);
+            throw new ResourceNotFoundException('Étudiant non retrouvé');
         }
 
         $existsPrepa = StudentPendingStudent::where('student_id', $student->id)
@@ -192,12 +216,18 @@ class DossierSubmissionService
             })
             ->exists();
         if (!$existsPrepa) {
-            throw new \Exception('Student has not completed Classes Préparatoires.', 400);
+            throw new BusinessException(
+                message: 'L\'\u00e9tudiant n\'a pas compl\u00e9t\u00e9 les Classes Pr\u00e9paratoires',
+                errorCode: 'PREPARATORY_NOT_COMPLETED'
+            );
         }
 
         $department = Department::findOrFail($departmentId);
         if ($department->name === 'Classes Préparatoires') {
-            throw new \Exception('La filière choisie n\'est pas valide.', 400);
+            throw new BusinessException(
+                message: 'La fili\u00e8re choisie n\'est pas valide',
+                errorCode: 'INVALID_DEPARTMENT'
+            );
         }
     }
 

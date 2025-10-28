@@ -4,6 +4,8 @@ use Illuminate\Support\Facades\Route;
 use App\Modules\RH\Http\Controllers\ProfessorController;
 use App\Modules\RH\Http\Controllers\AdminUserController;
 
+Route::prefix('api/rh')->group(function () {
+
 // Routes protégées par authentification
 Route::middleware('auth:sanctum')->group(function () {
     // CRUD Professeurs
@@ -19,3 +21,5 @@ Route::middleware('auth:sanctum')->group(function () {
     // Statistiques des utilisateurs
     Route::get('admin-users-statistics', [AdminUserController::class, 'statistics']);
 });
+
+}); // Fin du groupe api/rh

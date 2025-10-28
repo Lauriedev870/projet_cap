@@ -4,10 +4,11 @@ namespace App\Modules\Inscription\Services;
 
 use App\Models\Student;
 use App\Modules\Inscription\Models\PersonalInformation;
+use App\Exceptions\ResourceNotFoundException;
+use App\Exceptions\BusinessException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Hash;
-use Exception;
 
 class StudentIdService
 {
@@ -24,20 +25,26 @@ class StudentIdService
             ->first();
 
         if (!$pi) {
-            throw new Exception('Identité introuvable');
+            throw new ResourceNotFoundException('Identité introuvable');
         }
 
         // Le matricule est égal au numéro de téléphone enregistré
         $phone = is_array($pi->contacts ?? null) ? ($pi->contacts[0] ?? null) : ($pi->phone ?? null);
         
         if (!$phone) {
-            throw new Exception('Aucun numéro de téléphone associé à cette identité');
+            throw new BusinessException(
+                message: 'Aucun numéro de téléphone associé à cette identité',
+                errorCode: 'PHONE_NOT_FOUND'
+            );
         }
 
         $student = Student::where('student_id_number', $phone)->first();
         
         if (!$student) {
-            throw new Exception('Matricule non défini pour cette identité');
+            throw new BusinessException(
+                message: 'Matricule non défini pour cette identité',
+                errorCode: 'STUDENT_ID_NOT_ASSIGNED'
+            );
         }
 
         Log::info('Matricule recherché', [
@@ -63,14 +70,18 @@ class StudentIdService
                 ->first();
 
             if (!$pi) {
-                throw new Exception('Identité introuvable');
+                throw new ResourceNotFoundException('Identité introuvable');
             }
 
             // Vérifier si un étudiant existe déjà avec ce numéro de téléphone
             $existingStudent = Student::where('student_id_number', $data['phone'])->first();
             
             if ($existingStudent) {
-                throw new Exception('Un étudiant avec ce matricule existe déjà');
+                throw new BusinessException(
+                    message: 'Un étudiant avec ce matricule existe déjà',
+                    errorCode: 'STUDENT_ID_ALREADY_EXISTS',
+                    statusCode: 409
+                );
             }
 
             // Créer l'étudiant
