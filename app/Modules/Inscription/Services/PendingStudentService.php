@@ -5,6 +5,7 @@ namespace App\Modules\Inscription\Services;
 use App\Modules\Inscription\Models\PendingStudent;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Exception;
 
 class PendingStudentService
@@ -14,26 +15,49 @@ class PendingStudentService
      */
     public function getAll(array $filters = [], int $perPage = 15)
     {
-        $query = PendingStudent::query()->with(['entryLevel', 'entryDiploma']);
+        $query = PendingStudent::query()->with([
+            'entryDiploma',
+            'personalInformation',
+            'department',
+            'academicYear'
+        ]);
 
         // Filtre par statut
         if (!empty($filters['status'])) {
             $query->where('status', $filters['status']);
         }
 
-        // Filtre par niveau d'entrée
-        if (!empty($filters['entry_level_id'])) {
-            $query->where('entry_level_id', $filters['entry_level_id']);
+        // Filtre par département
+        if (!empty($filters['department_id'])) {
+            $query->where('department_id', $filters['department_id']);
+        }
+
+        // Filtre par année académique
+        if (!empty($filters['academic_year_id'])) {
+            $query->where('academic_year_id', $filters['academic_year_id']);
+        }
+
+        // Filtre par diplôme d'entrée
+        if (!empty($filters['entry_diploma_id'])) {
+            $query->where('entry_diploma_id', $filters['entry_diploma_id']);
+        }
+
+        // Filtre par niveau
+        if (!empty($filters['level'])) {
+            $query->where('level', $filters['level']);
         }
 
         // Recherche
         if (!empty($filters['search'])) {
             $search = $filters['search'];
             $query->where(function ($q) use ($search) {
-                $q->where('first_name', 'like', "%{$search}%")
-                  ->orWhere('last_name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%")
-                  ->orWhere('phone', 'like', "%{$search}%");
+                $q->where('tracking_code', 'like', "%{$search}%")
+                  ->orWhereHas('personalInformation', function ($subQuery) use ($search) {
+                      $subQuery->where('first_name', 'like', "%{$search}%")
+                              ->orWhere('last_name', 'like', "%{$search}%")
+                              ->orWhere('email', 'like', "%{$search}%")
+                              ->orWhere('phone', 'like', "%{$search}%");
+                  });
             });
         }
 
@@ -46,24 +70,48 @@ class PendingStudentService
     public function create(array $data): PendingStudent
     {
         return DB::transaction(function () use ($data) {
+            // Si personal_information_id n'est pas fourni, créer d'abord PersonalInformation
+            if (!isset($data['personal_information_id'])) {
+                $personalInfo = \App\Modules\Inscription\Models\PersonalInformation::create([
+                    'first_names' => $data['first_name'] ?? null,
+                    'last_name' => $data['last_name'] ?? null,
+                    'email' => $data['email'] ?? null,
+                    'contacts' => isset($data['phone']) ? ['phone' => $data['phone']] : null,
+                    'entry_diploma_id' => $data['entry_diploma_id'] ?? null,
+                ]);
+                $data['personal_information_id'] = $personalInfo->id;
+            }
+
             $pendingStudent = PendingStudent::create([
-                'email' => $data['email'],
-                'first_name' => $data['first_name'],
-                'last_name' => $data['last_name'],
-                'phone' => $data['phone'],
-                'entry_level_id' => $data['entry_level_id'],
+                'personal_information_id' => $data['personal_information_id'],
+                'tracking_code' => $this->generateTrackingCode(),
+                'department_id' => $data['department_id'] ?? null,
+                'academic_year_id' => $data['academic_year_id'] ?? null,
+                'level' => $data['level'] ?? null,
                 'entry_diploma_id' => $data['entry_diploma_id'],
                 'status' => 'pending',
-                'submitted_at' => now(),
+                'documents' => $data['documents'] ?? [],
             ]);
 
             Log::info('Étudiant en attente créé', [
                 'pending_student_id' => $pendingStudent->id,
-                'email' => $pendingStudent->email,
+                'tracking_code' => $pendingStudent->tracking_code,
             ]);
 
-            return $pendingStudent;
+            return $pendingStudent->load('personalInformation', 'entryDiploma');
         });
+    }
+
+    /**
+     * Générer un code de suivi unique
+     */
+    private function generateTrackingCode(): string
+    {
+        do {
+            $code = 'CAP-' . strtoupper(Str::random(8));
+        } while (PendingStudent::where('tracking_code', $code)->exists());
+
+        return $code;
     }
 
     /**
@@ -71,7 +119,14 @@ class PendingStudentService
      */
     public function getById(int $id): ?PendingStudent
     {
-        return PendingStudent::with(['entryLevel', 'entryDiploma'])->find($id);
+        return PendingStudent::with([
+            'entryDiploma',
+            'personalInformation',
+            'department',
+            'academicYear',
+            'studentPendingStudents.student',
+            'files'
+        ])->find($id);
     }
 
     /**
@@ -80,13 +135,46 @@ class PendingStudentService
     public function update(PendingStudent $pendingStudent, array $data): PendingStudent
     {
         return DB::transaction(function () use ($pendingStudent, $data) {
+            // Mettre à jour les informations personnelles si elles sont fournies
+            $personalInfoData = [];
+            if (isset($data['first_name'])) {
+                $personalInfoData['first_names'] = $data['first_name'];
+                unset($data['first_name']);
+            }
+            if (isset($data['last_name'])) {
+                $personalInfoData['last_name'] = $data['last_name'];
+                unset($data['last_name']);
+            }
+            if (isset($data['email'])) {
+                $personalInfoData['email'] = $data['email'];
+                unset($data['email']);
+            }
+            if (isset($data['phone'])) {
+                $contacts = $pendingStudent->personalInformation->contacts ?? [];
+                $contacts['phone'] = $data['phone'];
+                $personalInfoData['contacts'] = $contacts;
+                unset($data['phone']);
+            }
+
+            // Mettre à jour PersonalInformation si nécessaire
+            if (!empty($personalInfoData) && $pendingStudent->personalInformation) {
+                $pendingStudent->personalInformation->update($personalInfoData);
+            }
+
+            // Mettre à jour PendingStudent
             $pendingStudent->update($data);
 
             Log::info('Étudiant en attente mis à jour', [
                 'pending_student_id' => $pendingStudent->id,
+                'tracking_code' => $pendingStudent->tracking_code,
             ]);
 
-            return $pendingStudent->fresh(['entryLevel', 'entryDiploma']);
+            return $pendingStudent->fresh([
+                'entryDiploma',
+                'personalInformation',
+                'department',
+                'academicYear'
+            ]);
         });
     }
 
@@ -100,12 +188,14 @@ class PendingStudentService
 
             Log::info('Étudiant en attente supprimé', [
                 'pending_student_id' => $pendingStudent->id,
+                'tracking_code' => $pendingStudent->tracking_code,
             ]);
 
             return true;
         } catch (Exception $e) {
             Log::error('Erreur lors de la suppression de l\'étudiant en attente', [
                 'pending_student_id' => $pendingStudent->id,
+                'tracking_code' => $pendingStudent->tracking_code,
                 'error' => $e->getMessage(),
             ]);
 
@@ -118,11 +208,41 @@ class PendingStudentService
      */
     public function changeStatus(PendingStudent $pendingStudent, string $status): PendingStudent
     {
-        $pendingStudent->update(['status' => $status]);
+        return DB::transaction(function () use ($pendingStudent, $status) {
+            $oldStatus = $pendingStudent->status;
 
-        Log::info('Statut de l\'étudiant en attente changé', [
+            $pendingStudent->update(['status' => $status]);
+
+            // Si le statut passe à "approved", créer l'étudiant officiel
+            if ($status === 'approved' && $oldStatus !== 'approved') {
+                $this->createOfficialStudent($pendingStudent);
+            }
+
+            Log::info('Statut de l\'étudiant en attente changé', [
+                'pending_student_id' => $pendingStudent->id,
+                'tracking_code' => $pendingStudent->tracking_code,
+                'old_status' => $oldStatus,
+                'new_status' => $status,
+            ]);
+
+            return $pendingStudent->fresh();
+        });
+    }
+
+    /**
+     * Mettre à jour l'opinion CUCA
+     */
+    public function updateCucaOpinion(PendingStudent $pendingStudent, string $opinion, ?string $comment = null): PendingStudent
+    {
+        $pendingStudent->update([
+            'cuca_opinion' => $opinion,
+            'cuca_comment' => $comment,
+        ]);
+
+        Log::info('Opinion CUCA mise à jour', [
             'pending_student_id' => $pendingStudent->id,
-            'new_status' => $status,
+            'tracking_code' => $pendingStudent->tracking_code,
+            'opinion' => $opinion,
         ]);
 
         return $pendingStudent->fresh();
@@ -139,6 +259,72 @@ class PendingStudentService
             'documents_submitted' => PendingStudent::where('status', 'documents_submitted')->count(),
             'approved' => PendingStudent::where('status', 'approved')->count(),
             'rejected' => PendingStudent::where('status', 'rejected')->count(),
+            'waiting_cuca' => PendingStudent::where('status', 'waiting_cuca')->count(),
         ];
+    }
+
+    /**
+     * Récupérer par code de suivi
+     */
+    public function getByTrackingCode(string $trackingCode): ?PendingStudent
+    {
+        return PendingStudent::with([
+            'entryDiploma',
+            'personalInformation',
+            'department',
+            'academicYear',
+            'files'
+        ])->where('tracking_code', $trackingCode)->first();
+    }
+
+    /**
+     * Créer un étudiant officiel à partir d'un étudiant en attente approuvé
+     */
+    private function createOfficialStudent(PendingStudent $pendingStudent): void
+    {
+        // Générer un numéro d'étudiant unique
+        $studentIdNumber = $this->generateStudentIdNumber();
+
+        // Créer l'étudiant dans la table students
+        $student = \App\Modules\Inscription\Models\Student::create([
+            'student_id_number' => $studentIdNumber,
+            'password' => bcrypt($studentIdNumber), // Mot de passe par défaut = numéro étudiant
+        ]);
+
+        // Créer la liaison dans student_pending_student
+        \App\Modules\Inscription\Models\StudentPendingStudent::create([
+            'student_id' => $student->id,
+            'pending_student_id' => $pendingStudent->id,
+        ]);
+
+        // Créer l'entrée dans academic_paths pour l'année académique actuelle
+        \App\Modules\Inscription\Models\AcademicPath::create([
+            'student_pending_student_id' => $student->studentPendingStudents()->first()->id,
+            'academic_year_id' => $pendingStudent->academic_year_id,
+            'study_level' => $pendingStudent->level,
+            'financial_status' => 'Non exonéré', // Par défaut non exonéré
+        ]);
+
+        Log::info('Étudiant officiel créé', [
+            'student_id' => $student->id,
+            'student_id_number' => $studentIdNumber,
+            'pending_student_id' => $pendingStudent->id,
+            'tracking_code' => $pendingStudent->tracking_code,
+        ]);
+    }
+
+    /**
+     * Générer un numéro d'étudiant unique
+     */
+    private function generateStudentIdNumber(): string
+    {
+        do {
+            // Format: ANNEE + 4 chiffres aléatoires (ex: 20240001)
+            $year = date('Y');
+            $number = str_pad(mt_rand(1, 9999), 4, '0', STR_PAD_LEFT);
+            $studentId = $year . $number;
+        } while (\App\Modules\Inscription\Models\Student::where('student_id_number', $studentId)->exists());
+
+        return $studentId;
     }
 }

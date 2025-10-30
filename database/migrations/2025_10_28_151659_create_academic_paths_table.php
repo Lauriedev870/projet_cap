@@ -14,17 +14,19 @@ return new class extends Migration
         Schema::create('academic_paths', function (Blueprint $table) {
             $table->id();
             $table->uuid('uuid')->unique();
-            $table->foreignId('student_id')->constrained('students')->onDelete('cascade');
+            $table->foreignId('student_pending_student_id')->nullable()->constrained('student_pending_student')->onDelete('cascade');
             $table->foreignId('academic_year_id')->constrained('academic_years')->onDelete('cascade');
-            $table->foreignId('department_id')->constrained('departments')->onDelete('cascade');
-            $table->string('level');
-            $table->enum('status', ['active', 'completed', 'suspended', 'withdrawn'])->default('active');
+            $table->string('study_level')->nullable();
+            $table->enum('year_decision', ['pass', 'fail', 'repeat'])->nullable();
+            $table->foreignId('role_id')->nullable()->constrained('roles')->onDelete('set null');
+            $table->enum('financial_status', ['Exonéré', 'Non exonéré'])->default('Non exonéré');
+            $table->string('cohort')->nullable();
             $table->timestamps();
             $table->softDeletes();
             
-            $table->index('student_id');
+            $table->index('student_pending_student_id');
             $table->index('academic_year_id');
-            $table->index('department_id');
+            $table->index('financial_status');
         });
     }
 

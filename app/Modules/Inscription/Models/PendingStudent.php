@@ -21,6 +21,7 @@ class PendingStudent extends Model
         'documents',
         'entry_diploma_id',
         'status',
+        'sponsorise',
     ];
 
     protected $casts = [
@@ -41,11 +42,6 @@ class PendingStudent extends Model
     public function academicYear()
     {
         return $this->belongsTo(AcademicYear::class);
-    }
-
-    public function entryLevel()
-    {
-        return $this->belongsTo(EntryLevel::class);
     }
 
     public function entryDiploma()

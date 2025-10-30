@@ -72,17 +72,29 @@ class PendingStudentController extends Controller
      * )
      */
     public function index(Request $request): JsonResponse
-    {
-        $filters = $request->only(['status', 'entry_level_id', 'search']);
-        $perPage = $this->getPerPage($request);
-        
-        $pendingStudents = $this->pendingStudentService->getAll($filters, $perPage);
+{
+    $filters = $request->only(['status', 'department_id', 'academic_year_id', 'entry_diploma_id', 'level', 'search']);
+    $perPage = $this->getPerPage($request);
+    
+    $pendingStudents = $this->pendingStudentService->getAll($filters, $perPage);
 
-        return $this->successPaginatedResponse(
-            $pendingStudents->setCollection(PendingStudentResource::collection($pendingStudents->items())),
-            'Étudiants en attente récupérés avec succès'
-        );
-    }
+    // Transformez d'abord les données avec la Resource, puis passez-les au paginator
+    $transformedData = PendingStudentResource::collection($pendingStudents->items());
+    
+    // Créez un nouveau paginator avec les données transformées
+    $paginator = new \Illuminate\Pagination\LengthAwarePaginator(
+        $transformedData,
+        $pendingStudents->total(),
+        $pendingStudents->perPage(),
+        $pendingStudents->currentPage(),
+        ['path' => $request->url()]
+    );
+
+    return $this->successPaginatedResponse(
+        $paginator,
+        'Étudiants en attente récupérés avec succès'
+    );
+}
 
     /**
      * @OA\Post(
@@ -156,7 +168,7 @@ class PendingStudentController extends Controller
     public function show(PendingStudent $pendingStudent): JsonResponse
     {
         return $this->successResponse(
-            new PendingStudentResource($pendingStudent->load(['entryLevel', 'entryDiploma', 'studentPendingStudents.student'])),
+            new PendingStudentResource($pendingStudent->load(['entryDiploma', 'studentPendingStudents.student'])),
             'Étudiant en attente récupéré avec succès'
         );
     }
@@ -183,8 +195,12 @@ class PendingStudentController extends Controller
      *             @OA\Property(property="first_name", type="string", example="John"),
      *             @OA\Property(property="last_name", type="string", example="Doe"),
      *             @OA\Property(property="phone", type="string", example="+1234567890"),
-     *             @OA\Property(property="entry_level_id", type="integer", example=1),
-     *             @OA\Property(property="entry_diploma_id", type="integer", example=1)
+     *             @OA\Property(property="department_id", type="integer", example=1),
+     *             @OA\Property(property="academic_year_id", type="integer", example=1),
+     *             @OA\Property(property="level", type="string", example="L1"),
+     *             @OA\Property(property="entry_diploma_id", type="integer", example=1),
+     *             @OA\Property(property="status", type="string", enum={"pending", "approved", "rejected", "withdrawn"}, example="approved"),
+     *             @OA\Property(property="sponsorise", type="string", enum={"Oui", "Non"}, example="Non")
      *         )
      *     ),
      *     @OA\Response(
@@ -204,7 +220,18 @@ class PendingStudentController extends Controller
      */
     public function update(CreatePendingStudentRequest $request, PendingStudent $pendingStudent): JsonResponse
     {
-        $pendingStudent = $this->pendingStudentService->update($pendingStudent, $request->validated());
+        $data = $request->validated();
+
+        // Si le statut est changé, utiliser la méthode changeStatus
+        if (isset($data['status']) && $data['status'] !== $pendingStudent->status) {
+            $pendingStudent = $this->pendingStudentService->changeStatus($pendingStudent, $data['status']);
+            unset($data['status']); // Retirer le statut des données de mise à jour normale
+        }
+
+        // Mettre à jour les autres champs si nécessaire
+        if (!empty($data)) {
+            $pendingStudent = $this->pendingStudentService->update($pendingStudent, $data);
+        }
 
         return $this->updatedResponse(
             new PendingStudentResource($pendingStudent),

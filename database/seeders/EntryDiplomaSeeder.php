@@ -17,64 +17,54 @@ class EntryDiplomaSeeder extends Seeder
             // Diplômes pour accès Licence
             [
                 'name' => 'Baccalauréat Scientifique',
-                'code' => 'BAC_S',
-                'level' => 'secondary',
-                'description' => 'Diplôme du baccalauréat série scientifique',
+                'abbreviation' => 'BAC S',
+                'entry_level' => 'Licence 1',
             ],
             [
                 'name' => 'BTS',
-                'code' => 'BTS',
-                'level' => 'post_secondary',
-                'description' => 'Brevet de Technicien Supérieur',
+                'abbreviation' => 'BTS',
+                'entry_level' => 'Licence 3',
             ],
             [
                 'name' => 'DUT',
-                'code' => 'DUT',
-                'level' => 'post_secondary',
-                'description' => 'Diplôme Universitaire de Technologie',
+                'abbreviation' => 'DUT',
+                'entry_level' => 'Licence 3',
             ],
             [
                 'name' => 'DTI',
-                'code' => 'DTI',
-                'level' => 'post_secondary',
-                'description' => 'Diplôme de Technicien Industriel',
+                'abbreviation' => 'DTI',
+                'entry_level' => 'Licence 3',
             ],
             [
                 'name' => 'DEAT',
-                'code' => 'DEAT',
-                'level' => 'post_secondary',
-                'description' => 'Diplôme d\'Études Appliquées et Technologiques',
+                'abbreviation' => 'DEAT',
+                'entry_level' => 'Licence 3',
             ],
             
             // Diplômes pour accès Master
             [
                 'name' => 'Licence Professionnelle',
-                'code' => 'LP',
-                'level' => 'bachelor',
-                'description' => 'Diplôme de Licence Professionnelle',
+                'abbreviation' => 'LP',
+                'entry_level' => 'Master 1',
             ],
             [
                 'name' => 'Licence Académique',
-                'code' => 'LA',
-                'level' => 'bachelor',
-                'description' => 'Diplôme de Licence Académique',
+                'abbreviation' => 'LA',
+                'entry_level' => 'Master 1',
             ],
             
             // Diplômes pour accès Ingénieur
             [
                 'name' => 'Certificat de Classes Préparatoires',
-                'code' => 'PREPA',
-                'level' => 'preparatory',
-                'description' => 'Certificat de réussite des classes préparatoires',
+                'abbreviation' => 'PREPA',
+                'entry_level' => 'Ingénieur 1',
             ],
         ];
 
         foreach ($diplomas as $diplomaData) {
             EntryDiploma::updateOrCreate(
-                ['code' => $diplomaData['code']],
-                array_merge($diplomaData, [
-                    'uuid' => Str::uuid()->toString(),
-                ])
+                ['name' => $diplomaData['name']],
+                $diplomaData
             );
         }
 

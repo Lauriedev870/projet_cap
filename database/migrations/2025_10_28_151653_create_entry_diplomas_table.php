@@ -15,15 +15,13 @@ return new class extends Migration
             $table->id();
             $table->uuid('uuid')->unique();
             $table->string('name');
-            $table->string('code')->unique();
-            $table->enum('level', ['secondary', 'post_secondary', 'bachelor', 'preparatory'])->default('secondary');
-            $table->text('description')->nullable();
-            $table->boolean('is_active')->default(true);
+            $table->string('abbreviation')->nullable();
+            $table->string('entry_level')->nullable();
             $table->timestamps();
             $table->softDeletes();
             
-            $table->index('code');
-            $table->index('level');
+            $table->index('name');
+            $table->index('entry_level');
         });
     }
 

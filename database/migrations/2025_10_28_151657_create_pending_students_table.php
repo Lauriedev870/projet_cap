@@ -27,6 +27,7 @@ return new class extends Migration
             $table->text('cuca_comment')->nullable();
             $table->enum('cuo_opinion', ['favorable', 'defavorable', 'pending'])->nullable();
             $table->text('rejection_reason')->nullable();
+            $table->enum('sponsorise', ['Oui', 'Non'])->default('Non');
             $table->timestamps();
             $table->softDeletes();
             

@@ -30,7 +30,6 @@ class Department extends Model
     {
         return $this->belongsTo(Cycle::class, 'cycle_id');
     }
-
     /**
      * Relation avec les périodes de soumission
      */
@@ -45,5 +44,21 @@ class Department extends Model
     public function classGroups()
     {
         return $this->hasMany(\App\Modules\Inscription\Models\ClassGroup::class, 'filiere_id');
+    }
+
+    /**
+     * Relation avec les périodes de soumission
+     */
+    //public function submissionPeriod()
+    //{
+      //  return $this->hasMany(SubmissionPeriod::class);
+    //}
+
+    /**
+     * Alias pour submissionPeriod (au pluriel)
+     */
+    public function submissionPeriods()
+    {
+        return $this->hasMany(SubmissionPeriod::class);
     }
 }
