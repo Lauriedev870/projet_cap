@@ -16,6 +16,7 @@ class ManagePeriodsRequest extends FormRequest
         $academicYear = $this->route('academicYear');
         
         $rules = [
+            'type' => ['required', 'string', 'in:depot,reclamation'],
             'start_date' => ['required', 'date'],
             'end_date' => ['required', 'date', 'after:start_date'],
             'departments' => ['required', 'array', 'min:1'],
@@ -34,6 +35,8 @@ class ManagePeriodsRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'type.required' => 'Le type de période est requis',
+            'type.in' => 'Le type de période doit être "depot" ou "reclamation"',
             'start_date.required' => 'La date de début est requise',
             'start_date.after_or_equal' => 'La date de début doit être dans la période de l\'année académique',
             'end_date.required' => 'La date de fin est requise',

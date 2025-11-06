@@ -3,7 +3,7 @@
 namespace App\Modules\Auth\Services;
 
 use App\Models\User;
-use App\Models\Student;
+use App\Modules\Inscription\Models\Student;
 use App\Modules\Inscription\Models\PendingStudent;
 use App\Modules\Finance\Models\Paiement;
 use Illuminate\Support\Facades\DB;

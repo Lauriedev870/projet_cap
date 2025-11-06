@@ -231,4 +231,47 @@ class CycleService
             'periods' => $periods,
         ];
     }
+
+    /**
+     * Récupère les niveaux d'études disponibles par filière/département
+     * Basé sur les étudiants existants dans la base de données
+     */
+    public function getStudyLevelsByDepartment(): array
+    {
+        $departments = \App\Modules\Inscription\Models\Department::all();
+        $levels = [];
+
+        foreach ($departments as $department) {
+            // Récupérer les niveaux uniques pour ce département depuis pending_students
+            $departmentLevels = \Illuminate\Support\Facades\DB::table('pending_students')
+                ->where('department_id', $department->id)
+                ->distinct()
+                ->pluck('level')
+                ->filter()
+                ->sort()
+                ->values();
+
+            if ($departmentLevels->isNotEmpty()) {
+                // Formater les niveaux avec label
+                $formattedLevels = $departmentLevels->map(function ($level) {
+                    $label = match($level) {
+                        'L1' => 'Licence 1',
+                        'L2' => 'Licence 2',
+                        'L3' => 'Licence 3',
+                        'M1' => 'Master 1',
+                        'M2' => 'Master 2',
+                        default => $level,
+                    };
+                    return [
+                        'value' => $level,
+                        'label' => $label,
+                    ];
+                })->toArray();
+
+                $levels[$department->name] = $formattedLevels;
+            }
+        }
+
+        return $levels;
+    }
 }

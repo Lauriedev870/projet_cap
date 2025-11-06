@@ -170,6 +170,21 @@ class AcademicYearController extends Controller
     }
 
     /**
+     * @OA\Get(
+     *     path="/api/academic-years/{academicYear}/periods",
+     *     summary="Récupérer les périodes d'une année académique",
+     *     tags={"Academic Years"},
+     *     @OA\Parameter(name="academicYear", in="path", required=true, @OA\Schema(type="integer")),
+     *     @OA\Response(response=200, description="Liste des périodes récupérée")
+     * )
+     */
+    public function getPeriods(AcademicYear $academicYear): JsonResponse
+    {
+        $periods = $this->academicYearService->getPeriods($academicYear);
+        return $this->successResponse($periods, 'Périodes récupérées avec succès');
+    }
+
+    /**
      * @OA\Delete(
      *     path="/api/academic-years/{academicYear}/periods",
      *     summary="Supprimer des périodes (combinaison de dates)",

@@ -11,6 +11,8 @@ use App\Modules\Inscription\Http\Controllers\CycleController;
 use App\Modules\Inscription\Http\Controllers\EntryDiplomaController;
 use App\Modules\Inscription\Http\Controllers\PublicReferenceController;
 use App\Modules\Inscription\Http\Controllers\DashboardController;
+use App\Modules\Inscription\Http\Controllers\ClassGroupController;
+use App\Modules\Inscription\Http\Controllers\StudentController;
 
 
 Route::prefix('api/inscription')->group(function () {
@@ -53,6 +55,7 @@ Route::prefix('api/inscription')->group(function () {
             Route::put('/{academicYear}', [AcademicYearController::class, 'update']);
             Route::delete('/{academicYear}', [AcademicYearController::class, 'destroy']);
 
+            Route::get('/{academicYear}/periods', [AcademicYearController::class, 'getPeriods']);
             Route::post('/{academicYear}/periods', [AcademicYearController::class, 'addPeriods']);
             Route::put('/{academicYear}/periods', [AcademicYearController::class, 'extendPeriods']);
             Route::delete('/{academicYear}/periods', [AcademicYearController::class, 'deletePeriods']);
@@ -70,12 +73,27 @@ Route::prefix('api/inscription')->group(function () {
     });
 
     Route::prefix('students')->group(function () {
+        Route::middleware('auth:sanctum')->group(function () {
+            Route::get('/', [StudentController::class, 'index']);
+            Route::get('/export/fiche-presence', [StudentController::class, 'exportFichePresence']);
+            Route::get('/export/fiche-emargement', [StudentController::class, 'exportFicheEmargement']);
+            Route::get('/{id}', [StudentController::class, 'show']);
+        });
         Route::post('/lookup-id', [StudentIdController::class, 'lookup']);
         Route::post('/assign-id', [StudentIdController::class, 'assign']);
     });
 
+    Route::prefix('class-groups')->middleware('auth:sanctum')->group(function () {
+        Route::get('/', [ClassGroupController::class, 'index']);
+        Route::post('/', [ClassGroupController::class, 'store']);
+        Route::get('/{classGroup}', [ClassGroupController::class, 'show']);
+        Route::delete('/{classGroup}', [ClassGroupController::class, 'destroy']);
+        Route::post('/delete-all', [ClassGroupController::class, 'destroyAll']);
+    });
+
     Route::get('cycles', [CycleController::class, 'index']);
     Route::get('filieres', [CycleController::class, 'allDepartmentsWithPeriods']);
+    Route::get('niveaux', [CycleController::class, 'studyLevels']);
     Route::get('next-deadline', [CycleController::class, 'nextDeadline']);
 
     Route::prefix('public')->group(function () {

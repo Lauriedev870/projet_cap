@@ -4,6 +4,7 @@ namespace App\Modules\Inscription\Services;
 
 use App\Modules\Inscription\Models\AcademicYear;
 use App\Modules\Inscription\Models\SubmissionPeriod;
+use App\Modules\Inscription\Models\ReclamationPeriod;
 use App\Exceptions\BusinessException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -237,36 +238,53 @@ class AcademicYearService
     public function addPeriods(AcademicYear $academicYear, array $data): void
     {
         DB::transaction(function () use ($academicYear, $data) {
-            foreach ($data['departments'] as $departmentId) {
-                // Vérifier les chevauchements
-                $overlap = SubmissionPeriod::where('department_id', $departmentId)
-                    ->where('academic_year_id', $academicYear->id)
-                    ->where(function ($q) use ($data) {
-                        $q->whereBetween('start_date', [$data['start_date'], $data['end_date']])
-                          ->orWhereBetween('end_date', [$data['start_date'], $data['end_date']])
-                          ->orWhere(function ($qq) use ($data) {
-                              $qq->where('start_date', '<=', $data['start_date'])
-                                 ->where('end_date', '>=', $data['end_date']);
-                          });
-                    })
-                    ->exists();
+            $type = $data['type'] ?? 'depot';
 
-                if ($overlap) {
-                    throw new \App\Exceptions\PeriodOverlapException($departmentId);
-                }
-
-                SubmissionPeriod::create([
+            if ($type === 'reclamation') {
+                // Pour les périodes de réclamation, créer une seule période sans départements spécifiques
+                ReclamationPeriod::create([
                     'academic_year_id' => $academicYear->id,
-                    'department_id' => $departmentId,
                     'start_date' => $data['start_date'],
                     'end_date' => $data['end_date'],
+                    'is_active' => true,
+                ]);
+
+                Log::info('Période de réclamation ajoutée', [
+                    'academic_year_id' => $academicYear->id,
+                ]);
+            } else {
+                // Pour les périodes de dépôt (depot/submission)
+                foreach ($data['departments'] as $departmentId) {
+                    // Vérifier les chevauchements
+                    $overlap = SubmissionPeriod::where('department_id', $departmentId)
+                        ->where('academic_year_id', $academicYear->id)
+                        ->where(function ($q) use ($data) {
+                            $q->whereBetween('start_date', [$data['start_date'], $data['end_date']])
+                              ->orWhereBetween('end_date', [$data['start_date'], $data['end_date']])
+                              ->orWhere(function ($qq) use ($data) {
+                                  $qq->where('start_date', '<=', $data['start_date'])
+                                     ->where('end_date', '>=', $data['end_date']);
+                              });
+                        })
+                        ->exists();
+
+                    if ($overlap) {
+                        throw new \App\Exceptions\PeriodOverlapException($departmentId);
+                    }
+
+                    SubmissionPeriod::create([
+                        'academic_year_id' => $academicYear->id,
+                        'department_id' => $departmentId,
+                        'start_date' => $data['start_date'],
+                        'end_date' => $data['end_date'],
+                    ]);
+                }
+
+                Log::info('Périodes de dépôt ajoutées', [
+                    'academic_year_id' => $academicYear->id,
+                    'departments' => $data['departments'],
                 ]);
             }
-
-            Log::info('Périodes ajoutées', [
-                'academic_year_id' => $academicYear->id,
-                'departments' => $data['departments'],
-            ]);
         });
     }
 
@@ -312,5 +330,49 @@ class AcademicYearService
 
             return $deleted;
         });
+    }
+
+    /**
+     * Récupérer toutes les périodes d'une année académique
+     */
+    public function getPeriods(AcademicYear $academicYear): array
+    {
+        $periods = [];
+
+        // Récupérer les périodes de soumission (dépôt)
+        $submissionPeriods = SubmissionPeriod::where('academic_year_id', $academicYear->id)
+            ->with('department')
+            ->get()
+            ->groupBy(function ($period) {
+                return $period->start_date->format('Y-m-d H:i:s') . '_' . $period->end_date->format('Y-m-d H:i:s');
+            });
+
+        foreach ($submissionPeriods as $key => $groupedPeriods) {
+            $firstPeriod = $groupedPeriods->first();
+            $departments = $groupedPeriods->map(function ($period) {
+                return $period->department->abbreviation ?? $period->department->name;
+            })->toArray();
+
+            $periods[] = [
+                'type' => 'depot',
+                'start' => $firstPeriod->start_date->format('d/m/Y H:i'),
+                'end' => $firstPeriod->end_date->format('d/m/Y H:i'),
+                'filieres' => $departments,
+            ];
+        }
+
+        // Récupérer les périodes de réclamation
+        $reclamationPeriods = $academicYear->reclamationPeriod;
+        
+        foreach ($reclamationPeriods as $period) {
+            $periods[] = [
+                'type' => 'reclamation',
+                'start' => $period->start_date->format('d/m/Y H:i'),
+                'end' => $period->end_date->format('d/m/Y H:i'),
+                'filieres' => [], // Les réclamations n'ont pas de départements spécifiques
+            ];
+        }
+
+        return $periods;
     }
 }

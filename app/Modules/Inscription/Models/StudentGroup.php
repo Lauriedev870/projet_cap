@@ -12,7 +12,7 @@ class StudentGroup extends Model
 
     protected $fillable = [
         'class_group_id',
-        'student_pending_student_id',
+        'student_id',
     ];
 
     /**
@@ -24,10 +24,10 @@ class StudentGroup extends Model
     }
 
     /**
-     * Relation avec StudentPendingStudent
+     * Relation avec l'étudiant
      */
-    public function studentPendingStudent()
+    public function student()
     {
-        return $this->belongsTo(StudentPendingStudent::class);
+        return $this->belongsTo(Student::class);
     }
 }

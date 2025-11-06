@@ -117,4 +117,38 @@ class CycleController extends Controller
             'Deadlines récupérés avec succès'
         );
     }
+
+    /**
+     * @OA\Get(
+     *     path="/api/niveaux",
+     *     summary="Niveaux d'études par filière",
+     *     description="Retourne les niveaux d'études disponibles pour chaque département/filière",
+     *     operationId="getStudyLevels",
+     *     tags={"Cycles"},
+     *     @OA\Response(
+     *         response=200,
+     *         description="OK",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean"),
+     *             @OA\Property(property="data", type="object",
+     *                 @OA\AdditionalProperties(
+     *                     type="array",
+     *                     @OA\Items(
+     *                         @OA\Property(property="value", type="string", example="L1"),
+     *                         @OA\Property(property="label", type="string", example="Licence 1")
+     *                     )
+     *                 )
+     *             )
+     *         )
+     *     )
+     * )
+     */
+    public function studyLevels(): JsonResponse
+    {
+        $levels = $this->cycleService->getStudyLevelsByDepartment();
+        return $this->successResponse(
+            $levels,
+            'Niveaux récupérés avec succès'
+        );
+    }
 }
