@@ -80,3 +80,6 @@ lerna-debug.log*
 deploy.php
 .env.prod
 .env.production.local
+
+
+*.sql
