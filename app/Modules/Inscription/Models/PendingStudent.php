@@ -10,6 +10,14 @@ class PendingStudent extends Model
 {
     use HasFactory, HasUuid;
 
+    /**
+     * Create a new factory instance for the model.
+     */
+    protected static function newFactory()
+    {
+        return \Database\Factories\PendingStudentFactory::new();
+    }
+
     protected $fillable = [
         'personal_information_id',
         'tracking_code',

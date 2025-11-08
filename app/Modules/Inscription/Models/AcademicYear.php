@@ -10,7 +10,15 @@ class AcademicYear extends Model
 {
     use HasFactory, HasUuid;
 
-    protected $fillable = ['submission_start', 'submission_end', 'academic_year', 'year_start', 'year_end', 'is_current'];
+    protected $fillable = ['year', 'start_date', 'end_date', 'is_active'];
+
+    /**
+     * Create a new factory instance for the model.
+     */
+    protected static function newFactory()
+    {
+        return \Database\Factories\AcademicYearFactory::new();
+    }
 
     protected $casts = [
         'submission_start' => 'date',

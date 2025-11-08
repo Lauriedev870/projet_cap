@@ -10,6 +10,14 @@ class PersonalInformation extends Model
 {
     use HasFactory, HasUuid;
 
+    /**
+     * Create a new factory instance for the model.
+     */
+    protected static function newFactory()
+    {
+        return \Database\Factories\PersonalInformationFactory::new();
+    }
+
     protected $fillable = [
         'last_name',
         'first_names',

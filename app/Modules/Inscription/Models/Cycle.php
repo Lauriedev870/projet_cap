@@ -12,6 +12,14 @@ class Cycle extends Model
 
     protected $fillable = ['name', 'abbreviation', 'years_count', 'is_lmd', 'type'];
 
+    /**
+     * Create a new factory instance for the model.
+     */
+    protected static function newFactory()
+    {
+        return \Database\Factories\CycleFactory::new();
+    }
+
     
     public function departments()
     {
