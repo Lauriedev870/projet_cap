@@ -70,4 +70,25 @@ class TeachingUnitController extends Controller
 
         return $this->deletedResponse('Unité d\'enseignement supprimée avec succès');
     }
+
+    /**
+     * Liste des éléments de cours (ECUE) d'une unité d'enseignement
+     */
+    public function getCourseElements(TeachingUnit $teachingUnit): JsonResponse
+    {
+        $courseElements = $teachingUnit->courseElements()->get();
+
+        return $this->successResponse(
+            $courseElements->map(function ($courseElement) {
+                return [
+                    'id' => $courseElement->id,
+                    'name' => $courseElement->name,
+                    'code' => $courseElement->code,
+                    'credits' => $courseElement->credits,
+                    'created_at' => $courseElement->created_at?->toISOString(),
+                ];
+            }),
+            'Éléments de cours récupérés avec succès'
+        );
+    }
 }

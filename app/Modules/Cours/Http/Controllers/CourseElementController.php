@@ -97,4 +97,39 @@ class CourseElementController extends Controller
             'Professeur détaché avec succès'
         );
     }
+
+    /**
+     * Liste des professeurs assignés à un élément de cours
+     */
+    public function getProfessors(CourseElement $courseElement): JsonResponse
+    {
+        $professors = $courseElement->professors()->get();
+
+        return $this->successResponse(
+            $professors->map(function ($professor) {
+                return [
+                    'id' => $professor->id,
+                    'first_name' => $professor->first_name,
+                    'last_name' => $professor->last_name,
+                    'full_name' => $professor->full_name,
+                    'email' => $professor->email,
+                    'phone' => $professor->phone,
+                ];
+            }),
+            'Professeurs récupérés avec succès'
+        );
+    }
+
+    /**
+     * Liste des ressources d'un élément de cours
+     */
+    public function getResources(CourseElement $courseElement): JsonResponse
+    {
+        $resources = $courseElement->resources()->with('file')->get();
+
+        return $this->successResponse(
+            $resources,
+            'Ressources récupérées avec succès'
+        );
+    }
 }

@@ -43,11 +43,26 @@ class CourseElement extends Model
     }
 
     /**
-     * Relation avec les programmes
+     * Relation avec les assignations cours-professeur (table pivot avec ID)
+     */
+    public function courseElementProfessors()
+    {
+        return $this->hasMany(CourseElementProfessor::class);
+    }
+
+    /**
+     * Relation avec les programmes via la table pivot
      */
     public function programs()
     {
-        return $this->hasMany(Program::class);
+        return $this->hasManyThrough(
+            Program::class,
+            CourseElementProfessor::class,
+            'course_element_id', // Foreign key on course_element_professor table
+            'course_element_professor_id', // Foreign key on programs table
+            'id', // Local key on course_elements table
+            'id' // Local key on course_element_professor table
+        );
     }
 
     /**
