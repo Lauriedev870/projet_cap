@@ -27,7 +27,7 @@ return new class extends Migration
             $table->softDeletes();
             
             $table->index('transaction_id');
-            $table->index('paiement_id');
+            $table->index('payment_id');
             $table->index('status');
         });
     }
