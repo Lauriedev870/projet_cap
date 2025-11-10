@@ -47,7 +47,7 @@ class AcademicYearController extends Controller
     public function show(AcademicYear $academicYear): JsonResponse
     {
         return $this->successResponse(
-            new AcademicYearResource($academicYear->load(['submissionPeriods', 'reclamationPeriods'])),
+            new AcademicYearResource($academicYear->load(['submissionPeriods'])),
             'Année académique récupérée avec succès'
         );
     }

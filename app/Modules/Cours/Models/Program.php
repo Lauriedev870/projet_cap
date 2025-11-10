@@ -16,10 +16,12 @@ class Program extends Model
         'class_group_id',
         'course_element_professor_id',
         'weighting',
+        'retake_weighting',
     ];
 
     protected $casts = [
         'weighting' => 'array',
+        'retake_weighting' => 'array',
     ];
 
     /**
@@ -31,20 +33,51 @@ class Program extends Model
     }
 
     /**
-     * Relation avec l'élément de cours
-     * Note: course_element_professor_id fait référence à l'ID de la table pivot
+     * Relation avec l'assignation cours-professeur (table pivot)
      */
-    public function courseElement()
+    public function courseElementProfessor()
     {
-        return $this->belongsTo(CourseElement::class, 'course_element_professor_id');
+        return $this->belongsTo(CourseElementProfessor::class, 'course_element_professor_id');
     }
 
     /**
-     * Obtenir le professeur assigné via la table pivot
-     * Cette méthode devra être personnalisée selon vos besoins exacts
+     * Relation avec l'élément de cours via la table pivot
+     */
+    public function courseElement()
+    {
+        return $this->hasOneThrough(
+            CourseElement::class,
+            CourseElementProfessor::class,
+            'id', // Foreign key on course_element_professor table
+            'id', // Foreign key on course_elements table
+            'course_element_professor_id', // Local key on programs table
+            'course_element_id' // Local key on course_element_professor table
+        );
+    }
+
+    /**
+     * Relation avec le professeur assigné via la table pivot
      */
     public function professor()
     {
-        return $this->belongsTo(Professor::class, 'course_element_professor_id');
+        return $this->hasOneThrough(
+            \App\Modules\RH\Models\Professor::class,
+            CourseElementProfessor::class,
+            'id', // Foreign key on course_element_professor table
+            'id', // Foreign key on professors table
+            'course_element_professor_id', // Local key on programs table
+            'professor_id' // Local key on course_element_professor table
+        );
+    }
+
+    /**
+     * Relation avec l'unité d'enseignement
+     * Via courseElement -> teachingUnit
+     */
+    public function teachingUnit()
+    {
+        // Cette relation nécessite une requête personnalisée
+        // car elle passe par deux tables intermédiaires
+        return $this->courseElement()->with('teachingUnit');
     }
 }

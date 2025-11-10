@@ -19,6 +19,14 @@ class Department extends Model
         'is_active',
     ];
 
+    /**
+     * Create a new factory instance for the model.
+     */
+    protected static function newFactory()
+    {
+        return \Database\Factories\DepartmentFactory::new();
+    }
+
     protected $casts = [
         'date_limite' => 'date',
     ];

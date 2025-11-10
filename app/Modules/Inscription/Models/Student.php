@@ -3,6 +3,7 @@
 namespace App\Modules\Inscription\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -11,6 +12,14 @@ use App\Traits\HasUuid;
 class Student extends Authenticatable
 {
     use HasFactory, HasUuid, SoftDeletes;
+
+    /**
+     * Create a new factory instance for the model.
+     */
+    protected static function newFactory()
+    {
+        return \Database\Factories\StudentFactory::new();
+    }
 
     protected $fillable = ['student_id_number', 'password'];
 

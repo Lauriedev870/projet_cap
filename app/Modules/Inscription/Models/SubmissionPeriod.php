@@ -10,6 +10,14 @@ class SubmissionPeriod extends Model
 {
     use HasFactory, HasUuid;
 
+    /**
+     * Create a new factory instance for the model.
+     */
+    protected static function newFactory()
+    {
+        return \Database\Factories\SubmissionPeriodFactory::new();
+    }
+
     protected $fillable = [
         'academic_year_id',
         'department_id',

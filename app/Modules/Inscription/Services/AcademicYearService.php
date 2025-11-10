@@ -50,6 +50,8 @@ class AcademicYearService
                 );
             }
 
+            AcademicYear::query()->update(['is_current' => false]);
+
             $year = AcademicYear::create([
                 'uuid' => (string) Str::uuid(),
                 'academic_year' => $academicYearLabel,
@@ -57,7 +59,7 @@ class AcademicYearService
                 'year_end' => $data['year_end'],
                 'submission_start' => $data['submission_start'],
                 'submission_end' => $data['submission_end'],
-                'is_current' => false,
+                'is_current' => true,
             ]);
 
             // Créer les périodes de soumission pour les départements

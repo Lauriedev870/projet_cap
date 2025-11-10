@@ -52,7 +52,7 @@ class AuthController extends Controller
     public function login(LoginRequest $request)
     {
         $result = $this->authService->login($request->validated());
-        return response()->json($result);
+        return $this->successResponse($result, 'Connexion réussie');
     }
 
     /**
@@ -88,7 +88,7 @@ class AuthController extends Controller
     public function register(RegisterRequest $request)
     {
         $result = $this->authService->register($request->validated());
-        return response()->json($result, 201);
+        return $this->successResponse($result, 'Inscription réussie');
     }
 
     /**

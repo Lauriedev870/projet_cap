@@ -48,11 +48,34 @@ class Professor extends Authenticatable
     public function courseElements()
     {
         return $this->belongsToMany(
-            CourseElement::class,
+            \App\Modules\Cours\Models\CourseElement::class,
             'course_element_professor',
             'professor_id',
             'course_element_id'
         )->withTimestamps();
+    }
+
+    /**
+     * Relation avec les assignations cours-professeur (table pivot avec ID)
+     */
+    public function courseElementProfessors()
+    {
+        return $this->hasMany(\App\Modules\Cours\Models\CourseElementProfessor::class);
+    }
+
+    /**
+     * Relation avec les programmes via la table pivot
+     */
+    public function programs()
+    {
+        return $this->hasManyThrough(
+            \App\Modules\Cours\Models\Program::class,
+            \App\Modules\Cours\Models\CourseElementProfessor::class,
+            'professor_id', // Foreign key on course_element_professor table
+            'course_element_professor_id', // Foreign key on programs table
+            'id', // Local key on professors table
+            'id' // Local key on course_element_professor table
+        );
     }
 
     /**

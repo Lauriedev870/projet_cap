@@ -22,11 +22,8 @@ class AuthService
                 'email' => ['Les identifiants fournis sont incorrects. '],
             ]);
         }
-
-        // Révoquer les anciens tokens
         $user->tokens()->delete();
 
-        // Créer un nouveau token
         $token = $user->createToken('auth_token')->plainTextToken;
 
         Log::info('Utilisateur connecté', [
@@ -34,7 +31,6 @@ class AuthService
             'email' => $user->email,
         ]);
 
-        // Charger les rôles
         $user->load('roles');
         
         return [
