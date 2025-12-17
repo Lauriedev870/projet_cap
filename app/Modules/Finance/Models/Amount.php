@@ -20,11 +20,8 @@ class Amount extends Model
         'uuid',
         'type',
         'libelle',
-        'program_id',
-        'level',
         'academic_year_id',
         'amount',
-        'sponsored_amount',
         'is_active',
         'penalty_amount',
         'penalty_type',
@@ -33,7 +30,6 @@ class Amount extends Model
 
     protected $casts = [
         'amount' => 'decimal:2',
-        'sponsored_amount' => 'decimal:2',
         'penalty_amount' => 'decimal:2',
         'is_active' => 'boolean',
         'penalty_active' => 'boolean',
@@ -59,11 +55,16 @@ class Amount extends Model
     }
 
     /**
-     * Relation: Department
+     * Relation: Classes auxquelles ce tarif s'applique
      */
-    public function department()
+    public function classGroups()
     {
-        return $this->belongsTo(\App\Modules\Inscription\Models\Department::class);
+        return $this->belongsToMany(
+            \App\Modules\Inscription\Models\ClassGroup::class,
+            'amount_class_groups',
+            'amount_id',
+            'department_id'
+        )->withPivot('academic_year_id', 'study_level');
     }
 
     /**
