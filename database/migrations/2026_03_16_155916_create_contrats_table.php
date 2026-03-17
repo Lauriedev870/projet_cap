@@ -8,11 +8,11 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('contracts', function (Blueprint $table) {
+        Schema::create('contrats', function (Blueprint $table) {
             $table->id();
             $table->uuid('uuid')->unique();
 
-            $table->string('contract_number', 100)->unique();
+            $table->string('contrat_number', 100)->unique();
             $table->string('division', 100)->nullable();
 
             $table->foreignId('professor_id')
@@ -42,6 +42,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('contracts');
+        Schema::dropIfExists('contrats');
     }
 };

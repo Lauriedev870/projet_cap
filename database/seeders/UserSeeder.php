@@ -94,13 +94,13 @@ class UserSeeder extends Seeder
             $role = Role::where('slug', $roleName)->first();
 
             if (!$role) {
-                $this->command->error("❌ Rôle introuvable : $roleName");
+                $this->command->error("Rôle introuvable : $roleName");
                 continue;
             }
 
             $user->roles()->syncWithoutDetaching([$role->id]);
         }
 
-        $this->command->info('✅ Utilisateurs créés avec succès!');
+        $this->command->info('Utilisateurs créés avec succès!');
     }
 }

@@ -4,13 +4,14 @@ namespace App\Modules\RH\Models;
 
 use App\Traits\HasUuid;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
 class Professor extends Authenticatable
 {
-    use HasFactory, Notifiable, HasUuid, HasApiTokens;
+    use HasFactory, Notifiable, HasUuid, HasApiTokens, SoftDeletes;
 
     /**
      * Create a new factory instance for the model.
@@ -21,6 +22,7 @@ class Professor extends Authenticatable
     }
 
     protected $fillable = [
+        // Existants
         'last_name',
         'first_name',
         'email',
@@ -34,6 +36,16 @@ class Professor extends Authenticatable
         'bank',
         'status',
         'grade_id',
+        'specialty',
+        'bio',
+
+        // Ajoutés pour le contrat
+        'nationality',
+        'profession',
+        'city',
+        'district',
+        'plot_number',
+        'house_number',
     ];
 
     protected $hidden = [
@@ -46,12 +58,24 @@ class Professor extends Authenticatable
 
     protected $appends = ['full_name'];
 
+    // ─────────────────────────────────────────
+    // Relations
+    // ─────────────────────────────────────────
+
     /**
      * Relation avec le grade
      */
     public function grade()
     {
         return $this->belongsTo(Grade::class);
+    }
+
+    /**
+     * Relation avec les contrats
+     */
+    public function contrats()
+    {
+        return $this->hasMany(\App\Modules\RH\Models\Contrat::class);
     }
 
     /**
@@ -68,7 +92,7 @@ class Professor extends Authenticatable
     }
 
     /**
-     * Relation avec les assignations cours-professeur (table pivot avec ID)
+     * Relation avec les assignations cours-professeur
      */
     public function courseElementProfessors()
     {
@@ -83,12 +107,16 @@ class Professor extends Authenticatable
         return $this->hasManyThrough(
             \App\Modules\Cours\Models\Program::class,
             \App\Modules\Cours\Models\CourseElementProfessor::class,
-            'professor_id', // Foreign key on course_element_professor table
-            'course_element_professor_id', // Foreign key on programs table
-            'id', // Local key on professors table
-            'id' // Local key on course_element_professor table
+            'professor_id',
+            'course_element_professor_id',
+            'id',
+            'id'
         );
     }
+
+    // ─────────────────────────────────────────
+    // Scopes
+    // ─────────────────────────────────────────
 
     /**
      * Scope pour les professeurs actifs
@@ -98,11 +126,30 @@ class Professor extends Authenticatable
         return $query->where('status', 'active');
     }
 
+    // ─────────────────────────────────────────
+    // Accesseurs
+    // ─────────────────────────────────────────
+
     /**
-     * Obtenir le nom complet
+     * Nom complet
      */
     public function getFullNameAttribute(): string
     {
         return "{$this->first_name} {$this->last_name}";
+    }
+
+    /**
+     * Adresse complète formatée pour le contrat
+     */
+    public function getFullAddressAttribute(): string
+    {
+        $parts = array_filter([
+            $this->city,
+            $this->district,
+            $this->plot_number ? "Parcelle {$this->plot_number}" : null,
+            $this->house_number ? "Maison {$this->house_number}" : null,
+        ]);
+
+        return implode(', ', $parts);
     }
 }
