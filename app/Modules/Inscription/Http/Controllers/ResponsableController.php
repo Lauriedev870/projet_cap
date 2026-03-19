@@ -5,16 +5,16 @@ namespace App\Modules\Inscription\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Modules\Inscription\Models\PersonalInformation;
 use App\Modules\Inscription\Models\ClassGroup;
-use App\Modules\Inscription\Models\Student;
 use App\Modules\Inscription\Models\StudentGroup;
+use App\Modules\Inscription\Models\PendingStudent;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Exception;
 
-class ResponsableController extends Controller{
-    
-    public function dashboard(Request $request)  {
+class ResponsableController extends Controller
+{
+    public function dashboard(Request $request) {
         try {
             $user = Auth::user();
 
@@ -147,20 +147,28 @@ class ResponsableController extends Controller{
         }
     }
 
-    private function getUserClasses(int $personalInfoId) {
-        return ClassGroup::whereHas('studentGroups.student.pendingStudents', function ($query) use ($personalInfoId) {
-            $query->where('personal_information_id', $personalInfoId);
+    private function getUserClasses(int $personalInfoId)
+    {
+        return ClassGroup::whereHas('studentGroups', function ($query) use ($personalInfoId) {
+            $query->whereHas('student.pendingStudents', function ($q) use ($personalInfoId) {
+                $q->where('personal_information_id', $personalInfoId);
+            });
         });
     }
 
 
-    private function getClassStudents(int $classGroupId) {
-        return PendingStudent::whereHas('studentGroups', function ($query) use ($classGroupId) {
-            $query->where('class_group_id', $classGroupId);
-        })
-        ->with('personalInformation')
-        ->get()
-        ->map(function ($student) {
+    private function getClassStudents(int $classGroupId){
+        // 1️⃣ récupérer les student_id depuis student_groups
+        $studentIds = StudentGroup::where('class_group_id', $classGroupId)
+            ->pluck('student_id');
+
+        // 2️⃣ récupérer les pending_students via student_id
+        $pendingStudents = PendingStudent::whereIn('student_id', $studentIds)
+            ->with('personalInformation')
+            ->get();
+
+        // 3️⃣ formatter les données (inchangé)
+        return $pendingStudents->map(function ($student) {
             return [
                 'id' => $student->id,
                 'matricule' => $student->matricule,
@@ -176,7 +184,8 @@ class ResponsableController extends Controller{
         });
     }
 
-    private function extractPhone($contacts) {
+    private function extractPhone($contacts)
+    {
         if (is_string($contacts)) {
             $contacts = json_decode($contacts, true);
         }
